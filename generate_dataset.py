@@ -4,8 +4,12 @@ import numpy as np
 
 def main(args):
     rng = np.random.default_rng(args.seed)
+
     data = rng.normal(size=(args.num_points, args.dimension))
-    np.savetxt(args.output, data, delimiter=', ', fmt='%f')
+    labels = data[:, 0] > 0
+    dataset = np.column_stack((data, labels))
+
+    np.savetxt(args.output, dataset, delimiter=', ', fmt='%f')
 
 if __name__ == "__main__":
     import argparse
