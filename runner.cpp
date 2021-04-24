@@ -1,10 +1,13 @@
 #include <iostream>
 #include <unistd.h>
+#include <fstream>
+
+#include "utils.h"
+#include "matrix.h"
+#include "csv_data_loader.h"
 
 
-#define DEBUG true
 
-enum class Mode {NORMAL, JLGAUSSIAN, JLBERNOULLI, JLFAST}; 
 
 int main(int argc, char *argv[]) { 
 	// Arguments 
@@ -60,5 +63,22 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	#endif
+    
 
+    // Get dataset
+    CSVDataLoader dl;
+    Matrix data = dl.loadFromFile(inputDatasetPath);
+
+    #if DEBUG
+        data.print();
+    #endif
+
+    Matrix labels = data.popColumn(-1); 
+
+    #if DEBUG
+        data.print();
+        labels.print();
+    #endif
+
+    return 1;
 }
