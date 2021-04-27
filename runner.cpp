@@ -5,16 +5,52 @@
 #include "utils.h"
 #include "matrix.h"
 #include "csv_data_loader.h"
+#include "nearest_neighbor_sequential.h"
+#include "exceptions.h"
 
-
+float* nearestNeighbor(Mode mode, bool gpu, Matrix data, Matrix labels, Matrix predictData) {
+	switch(mode) {
+		case Mode::NORMAL:
+			if (gpu) {
+				throw NotImplementedException("GPU::NORMAL");
+			} else {
+				return seqNormal(data, labels, predictData);
+			}
+			break;
+		case Mode::JLGAUSSIAN:
+			if (gpu) {
+				throw NotImplementedException("GPU::JLGAUSSIAN");
+			} else {
+				throw NotImplementedException("SEQUENTIAL::JLGAUSSIAN");
+			}
+			break;
+		case Mode::JLBERNOULLI:
+			if (gpu) {
+				throw NotImplementedException("GPU::JLBERNOULLI");
+			} else {
+				throw NotImplementedException("SEQUENTIAL::JLBERNOULLI");
+			}
+			break;
+		case Mode::JLFAST:
+			if (gpu) {
+				throw NotImplementedException("GPU::JLFAST");
+			} else {
+				throw NotImplementedException("SEQUENTIAL::JLFAST");
+			}
+			break;
+		default:
+			throw NotImplementedException("The nearestNeighbor mode");
+	}
+	return nullptr;
+}
 
 
 int main(int argc, char *argv[]) { 
 	// Arguments 
 	std::string inputDatasetPath;
 	std::string inputPredictDataPath;
-    bool gpu = false;
-    Mode mode = Mode::NORMAL;
+	bool gpu = false;
+	Mode mode = Mode::NORMAL;
 	
 	// Load Arguments
 	int opt;
@@ -41,13 +77,13 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-    // Print Arguments
+	// Print Arguments
 	#if DEBUG
 		printf("inputDatasetPath %s   inputPredictDataPath %s   ", 
-		       inputDatasetPath.c_str(), 
-               inputPredictDataPath.c_str());
-        
-        const char* gpuStr = (gpu==true)? "GPU": "SEQUENTIAL";
+			   inputDatasetPath.c_str(), 
+			   inputPredictDataPath.c_str());
+		
+		const char* gpuStr = (gpu==true)? "GPU": "SEQUENTIAL";
 		switch (mode) {
 		case Mode::NORMAL:
 			printf("mode %s::NORMAL\n", gpuStr);
@@ -63,29 +99,54 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	#endif
-    
+	
 
-    // Get dataset
-    CSVDataLoader dl;
-    Matrix data = dl.loadFromFile(inputDatasetPath);
+	// Get dataset
+	CSVDataLoader dl;
+	Matrix data = dl.loadFromFile(inputDatasetPath);
 
-    #if DEBUG
-        data.print();
-    #endif
+	// #if DEBUG
+	//     data.print();
+	// #endif
 
 	// Split labels from dataset
-    Matrix labels = data.popColumn(-1); 
+	Matrix labels = data.popColumn(-1); 
 
-    #if DEBUG
-        data.print();
-        labels.print();
-    #endif
+	#if DEBUG
+		printf("data\n");
+		data.print();
+		printf("labels\n");
+		labels.print();
+	#endif
+
+	
 
 	// Get points to classify
 	Matrix predictData = dl.loadFromFile(inputPredictDataPath);
 	#if DEBUG
-        predictData.print();
-    #endif
+		printf("predictData\n");
+		predictData.print();
+	#endif
 
-    return 1;
+	// Check input file dimensions
+	if (data.getNumCols() != predictData.getNumCols()){
+		throw std::invalid_argument("Data and PredictData dimentions are not the same");
+	}
+
+	// Call nearest neighbors
+	float *predictedLabels = nearestNeighbor(mode, gpu, data, labels, predictData);
+
+	int numPredictPoints = predictData.getNumRows();
+
+	if (predictedLabels != nullptr) {
+		printf("predictedLabels\n[\n");
+		for (int i = 0; i < numPredictPoints; i++) {
+			printf("%f\n", predictedLabels[i]);
+		}
+		printf("]\n");
+	} else {
+		printf("predictedLabels is null\n");
+	}
+
+	return 0;
 }

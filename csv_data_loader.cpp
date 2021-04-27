@@ -33,7 +33,9 @@ Matrix CSVDataLoader::loadFromFile(string path) {
 			// Define dim to be dimTemp if we are on the first row
 			dim = (!((bool)dim))*dimTemp + ((bool)dim)*dim;
 			
-			assert(dimTemp == dim);
+			if (dimTemp != dim){
+				throw std::invalid_argument(path +" dimentions are not the same on row " + to_string(numPoints));
+			}
 		}
 
 		inputFile.close();

@@ -2,7 +2,6 @@
 #pragma once
 #include <fstream>
 #include <iostream>
-#include <assert.h>
 #include <sstream>
 
 #include "matrix.h"
