@@ -1,5 +1,7 @@
 # Project Specific gitignore
 *.csv
+runner
+
 
 # Cuda gitignore
 *.i
