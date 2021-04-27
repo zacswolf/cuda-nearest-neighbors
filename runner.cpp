@@ -73,11 +73,18 @@ int main(int argc, char *argv[]) {
         data.print();
     #endif
 
+	// Split labels from dataset
     Matrix labels = data.popColumn(-1); 
 
     #if DEBUG
         data.print();
         labels.print();
+    #endif
+
+	// Get points to classify
+	Matrix predictData = dl.loadFromFile(inputPredictDataPath);
+	#if DEBUG
+        predictData.print();
     #endif
 
     return 1;

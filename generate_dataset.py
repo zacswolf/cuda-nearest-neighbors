@@ -6,10 +6,11 @@ def main(args):
     rng = np.random.default_rng(args.seed)
 
     data = rng.normal(size=(args.num_points, args.dimension))
-    labels = data[:, 0] > 0
-    dataset = np.column_stack((data, labels))
+    if (args.label):
+        labels = data[:, 0] > 0
+        data = np.column_stack((data, labels))
 
-    np.savetxt(args.output, dataset, delimiter=', ', fmt='%f')
+    np.savetxt(args.output, data, delimiter=', ', fmt='%f')
 
 if __name__ == "__main__":
     import argparse
@@ -35,6 +36,10 @@ if __name__ == "__main__":
                         type=int, 
                         help='the random number generator\'s seed', 
                         default=0)
+    parser.add_argument('-l', 
+                        '--label', 
+                        action='store_true',
+                        help='generate labels in the last column')
 
     args = parser.parse_args()
 
