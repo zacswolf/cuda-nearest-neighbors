@@ -1,9 +1,9 @@
 #include "nearest_neighbor_sequential.h"
 
-float* seqNormal(Matrix data, Matrix labels, Matrix predictData) {
-	int numPredictPoints = predictData.getNumRows();
-	int numDataPoints = data.getNumRows();
-	int dim = data.getNumCols();
+float* seqNormal(Matrix *data, Matrix *labels, Matrix *predictData) {
+	int numPredictPoints = predictData->getNumRows();
+	int numDataPoints = data->getNumRows();
+	int dim = data->getNumCols();
 
 	float *predictedLabels = new float(numPredictPoints);
 
@@ -15,7 +15,7 @@ float* seqNormal(Matrix data, Matrix labels, Matrix predictData) {
 			float currentDistance = 0;
 			// l2 norm
 			for (int d = 0; d < dim; d++) {
-				int term = data.get(currentDataPoint, d) - predictData.get(currentPredictPoint, d);
+				int term = data->get(currentDataPoint, d) - predictData->get(currentPredictPoint, d);
 				currentDistance += term*term;
 			}
 			currentDistance = sqrt(currentDistance);
@@ -25,15 +25,15 @@ float* seqNormal(Matrix data, Matrix labels, Matrix predictData) {
 			closestPoint = (!newClosest)*closestPoint + newClosest*currentDataPoint;
 			closestDistance = (!newClosest)*closestDistance + newClosest*currentDistance;
 		}
-		predictedLabels[currentPredictPoint] = labels.get(closestPoint, 0);
+		predictedLabels[currentPredictPoint] = labels->get(closestPoint, 0);
 	}
 	return predictedLabels;
 }
 
-float* seqJLGaussian(Matrix data, Matrix labels, Matrix predictData, float epsilon) {
-	// int numPredictPoints = predictData.getNumRows();
-	// int numDataPoints = data.getNumRows();
-	// int dim = data.getNumCols();
+float* seqJLGaussian(Matrix *data, Matrix *labels, Matrix *predictData, float epsilon) {
+	int numPredictPoints = predictData->getNumRows();
+	int numDataPoints = data->getNumRows();
+	int dim = data->getNumCols();
 
 	// // TODO: find constant
 	// int newDim = ceil(log(numDataPoints)/(epsilon*epsilon));

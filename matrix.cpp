@@ -19,7 +19,7 @@ float Matrix::getNumCols() {
 }
 
 // Removes and returns column from data  
-Matrix Matrix::popColumn(int columnIndex) {
+Matrix* Matrix::popColumn(int columnIndex) {
 	if (columnIndex < 0){
 		columnIndex = this->numCols + columnIndex;
 	}
@@ -62,7 +62,7 @@ Matrix Matrix::popColumn(int columnIndex) {
 	this->data = data;
 	this->numCols--;
 
-	return Matrix(column, this->numRows, 1);
+	return new Matrix(column, this->numRows, 1);
 }
 
 void Matrix::print() {
@@ -75,4 +75,9 @@ void Matrix::print() {
 		printf("]\n");
 	}
 	printf("]\n");
+}
+
+
+MatrixInterface* Matrix::to(int device) {
+	throw NotImplementedException("Matrix::to");
 }

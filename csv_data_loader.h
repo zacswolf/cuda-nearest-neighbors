@@ -5,13 +5,13 @@
 #include <sstream>
 
 #include "matrix.h"
-#include "data_loader.h"
+#include "data_loader_interface.h"
 
 
 using namespace std;
 
 
-class CSVDataLoader: public DataLoader {
+class CSVDataLoader: public DataLoaderInterface {
 	public:
-		Matrix loadFromFile(string path);
+		Matrix* loadFromFile(string path);
 };
