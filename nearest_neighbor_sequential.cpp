@@ -29,3 +29,32 @@ float* seqNormal(Matrix data, Matrix labels, Matrix predictData) {
 	}
 	return predictedLabels;
 }
+
+float* seqJLGaussian(Matrix data, Matrix labels, Matrix predictData, float epsilon) {
+	// int numPredictPoints = predictData.getNumRows();
+	// int numDataPoints = data.getNumRows();
+	// int dim = data.getNumCols();
+
+	// // TODO: find constant
+	// int newDim = ceil(log(numDataPoints)/(epsilon*epsilon));
+
+	// // Make a random projection matrix of size dim x newDim
+	// std::default_random_engine generator;
+	// std::normal_distribution<float> distribution(0., 1.);
+	
+	// vector<float> rpMatRaw(dim * newDim);
+
+	// for (int i = 0; i < dim * newDim; i++){
+	// 	rpMatRaw[i] = distribution(generator);
+	// }
+
+	// Matrix rpMat = Matrix(rpMatRaw, dim, newDim);
+
+	// // newData = data x rpMat
+
+	throw NotImplementedException("SEQUENTIAL::JLGAUSSIAN");
+
+	float *predictedLabels = new float(numPredictPoints);
+	return predictedLabels;
+
+}

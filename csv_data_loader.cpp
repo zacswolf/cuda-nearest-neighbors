@@ -34,7 +34,7 @@ Matrix CSVDataLoader::loadFromFile(string path) {
 			dim = (!((bool)dim))*dimTemp + ((bool)dim)*dim;
 			
 			if (dimTemp != dim){
-				throw std::invalid_argument(path +" dimentions are not the same on row " + to_string(numPoints));
+				throw std::invalid_argument(path + " dimentions are not the same on row " + to_string(numPoints));
 			}
 		}
 

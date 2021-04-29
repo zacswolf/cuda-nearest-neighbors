@@ -8,7 +8,7 @@
 #include "nearest_neighbor_sequential.h"
 #include "exceptions.h"
 
-float* nearestNeighbor(Mode mode, bool gpu, Matrix data, Matrix labels, Matrix predictData) {
+float* nearestNeighbor(Mode mode, bool gpu, Matrix data, Matrix labels, Matrix predictData, float epsilon) {
 	switch(mode) {
 		case Mode::NORMAL:
 			if (gpu) {
@@ -21,7 +21,7 @@ float* nearestNeighbor(Mode mode, bool gpu, Matrix data, Matrix labels, Matrix p
 			if (gpu) {
 				throw NotImplementedException("GPU::JLGAUSSIAN");
 			} else {
-				throw NotImplementedException("SEQUENTIAL::JLGAUSSIAN");
+				return seqJLGaussian(data, labels, predictData, epsilon);
 			}
 			break;
 		case Mode::JLBERNOULLI:
@@ -51,10 +51,11 @@ int main(int argc, char *argv[]) {
 	std::string inputPredictDataPath;
 	bool gpu = false;
 	Mode mode = Mode::NORMAL;
+	float epsilon = -1.;
 	
 	// Load Arguments
 	int opt;
-	while ((opt = getopt(argc, argv, "d:p:gm:")) != -1) {
+	while ((opt = getopt(argc, argv, "d:p:gm:e:")) != -1) {
 		switch (opt) {
 		case 'd':
 			// inputDatasetPath: a string specifying the path to the input dataset file
@@ -72,8 +73,22 @@ int main(int argc, char *argv[]) {
 			// mode: an integer specifying the mode, look at Mode Enum
 			mode = static_cast<Mode>(atoi(optarg));
 			break;
+		case 'e':
+			// epsilon; a float specifying the accuracy of the approximation algorithm
+			// required for non Normal modes
+			epsilon = atof(optarg);
 		default:
 			break;
+		}
+	}
+
+	// check epsilon
+	if (mode != Mode::NORMAL) {
+		if (epsilon == -1) {
+			throw std::invalid_argument("Need to provide an epsilon");
+		}
+		if ((0. >= epsilon) || (epsilon >= 1.)) {
+			throw std::invalid_argument("The value of epsilon should be in (0, 1)");
 		}
 	}
 
@@ -134,7 +149,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Call nearest neighbors
-	float *predictedLabels = nearestNeighbor(mode, gpu, data, labels, predictData);
+	float *predictedLabels = nearestNeighbor(mode, gpu, data, labels, predictData, epsilon);
 
 	int numPredictPoints = predictData.getNumRows();
 
