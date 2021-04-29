@@ -1,6 +1,6 @@
 #include "csv_data_loader.h"
 
-Matrix* CSVDataLoader::loadFromFile(string path) {
+Matrix CSVDataLoader::loadFromFile(string path) {
 	vector<float> data;
 
 	// Read CSV file, TODO: abstract this
@@ -44,7 +44,7 @@ Matrix* CSVDataLoader::loadFromFile(string path) {
 		// 	printf("%f ", data[i]);
 		// }
 
-		return new Matrix(data, numPoints, dim);
+		return Matrix({data, numPoints, dim});
 	} else {
 		cerr << "Unable to open input file: " << path << "\n";
 		exit(EXIT_FAILURE);

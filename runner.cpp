@@ -8,20 +8,20 @@
 #include "nearest_neighbor_sequential.h"
 #include "exceptions.h"
 
-float* nearestNeighbor(Mode mode, bool gpu, MatrixInterface *data, MatrixInterface *labels, MatrixInterface *predictData, float epsilon) {
+float* nearestNeighbor(Mode mode, bool gpu, Matrix &data, Matrix &labels, Matrix &predictData, float epsilon) {
 	switch(mode) {
 		case Mode::NORMAL:
 			if (gpu) {
 				throw NotImplementedException("GPU::NORMAL");
 			} else {
-				return seqNormal(dynamic_cast<Matrix*>(data), dynamic_cast<Matrix*>(labels), dynamic_cast<Matrix*>(predictData));
+				return seqNormal(data, labels, predictData);
 			}
 			break;
 		case Mode::JLGAUSSIAN:
 			if (gpu) {
 				throw NotImplementedException("GPU::JLGAUSSIAN");
 			} else {
-				return seqJLGaussian(dynamic_cast<Matrix*>(data), dynamic_cast<Matrix*>(labels), dynamic_cast<Matrix*>(predictData), epsilon);
+				return seqJLGaussian(data, labels, predictData, epsilon);
 			}
 			break;
 		case Mode::JLBERNOULLI:
@@ -118,31 +118,33 @@ int main(int argc, char *argv[]) {
 
 	// Get dataset
 	CSVDataLoader dl;
-	Matrix *data = dl.loadFromFile(inputDatasetPath);
+	Matrix data = dl.loadFromFile(inputDatasetPath);
 
 	// #if DEBUG
 	//     data.print();
 	// #endif
 
 	// Split labels from dataset
-	Matrix *labels = data->popColumn(-1); 
+	pair<Matrix, Matrix> p = popColumn(data, -1); 
+	data = p.first;
+	Matrix labels = p.second;
 
 	#if DEBUG
 		printf("data\n");
-		data->print();
+		print(data);
 		printf("labels\n");
-		labels->print();
+		print(labels);
 	#endif
 
 	// Get points to classify
-	Matrix *predictData = dl.loadFromFile(inputPredictDataPath);
+	Matrix predictData = dl.loadFromFile(inputPredictDataPath);
 	#if DEBUG
 		printf("predictData\n");
-		predictData->print();
+		print(predictData);
 	#endif
 
 	// Check input file dimensions
-	if (data->getNumCols() != predictData->getNumCols()){
+	if (data.numCols != predictData.numCols){
 		throw std::invalid_argument("Data and PredictData dimentions are not the same");
 	}
 
@@ -154,7 +156,7 @@ int main(int argc, char *argv[]) {
 
 	printf("Finished nearestNeighbor\n");
 
-	int numPredictPoints = predictData->getNumRows();
+	int numPredictPoints = predictData.numRows;
 
 	if (predictedLabels != nullptr) {
 		printf("predictedLabels\n[\n");
