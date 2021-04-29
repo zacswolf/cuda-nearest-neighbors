@@ -10,7 +10,6 @@
 
 using namespace std;
 
-
 class CSVDataLoader: public DataLoaderInterface {
 	public:
 		Matrix* loadFromFile(string path);

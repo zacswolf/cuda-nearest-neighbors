@@ -7,7 +7,7 @@ class MatrixInterface {
 	public:
 		// virtual MatrixInterface(vector<float> data, int numRows, int numCols) {};
 
-		virtual float get(int row, int col) = 0;
+		const virtual float get(int row, int col) = 0;
 
 		virtual float getNumRows() = 0;
 

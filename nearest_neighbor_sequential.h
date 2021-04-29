@@ -1,6 +1,5 @@
 // nearest_neighbor_sequential.h
 #pragma once
-#include "random"
 #include "utils.h"
 #include "matrix.h"
 

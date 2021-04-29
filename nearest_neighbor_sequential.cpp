@@ -35,22 +35,24 @@ float* seqJLGaussian(Matrix *data, Matrix *labels, Matrix *predictData, float ep
 	int numDataPoints = data->getNumRows();
 	int dim = data->getNumCols();
 
-	// // TODO: find constant
-	// int newDim = ceil(log(numDataPoints)/(epsilon*epsilon));
+	// TODO: find constant
+	int newDim = ceil(log(numDataPoints)/(epsilon*epsilon));
 
-	// // Make a random projection matrix of size dim x newDim
-	// std::default_random_engine generator;
-	// std::normal_distribution<float> distribution(0., 1.);
-	
-	// vector<float> rpMatRaw(dim * newDim);
+	// Make a random projection matrix of size dim x newDim
+	Matrix *rpMat = new Matrix(dim, newDim);
+	std::normal_distribution<float> distribution(0., 1.);
+	rpMat->fill(distribution);
 
-	// for (int i = 0; i < dim * newDim; i++){
-	// 	rpMatRaw[i] = distribution(generator);
-	// }
+	// newData = data x rpMat, numDataPoints by newDim
+	Matrix *newData = new Matrix(numDataPoints, newDim);
 
-	// Matrix rpMat = Matrix(rpMatRaw, dim, newDim);
+    for (int i = 0; i < numDataPoints; i++) {
+        for (int j = 0; j < newDim; j++) {
+            for (int k = 0; k < dim; k++)
+                newData->set(i, j, newData->get(i,j) + data->get(i,k) * rpMat->get(k,j));
+        }
+    }
 
-	// // newData = data x rpMat
 
 	throw NotImplementedException("SEQUENTIAL::JLGAUSSIAN");
 

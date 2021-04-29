@@ -1,13 +1,31 @@
 #include "matrix.h"
 
+Matrix::Matrix(int numRows, int numCols){
+	this->data.reserve(numRows*numCols);
+	this->numRows = numRows;
+	this->numCols = numCols;
+}
+
 Matrix::Matrix(vector<float> data, int numRows, int numCols) {
 	this->data = data;
 	this->numRows = numRows;
 	this->numCols = numCols;
 }
 
-float Matrix::get(int row, int col) {
+void Matrix::fill(std::normal_distribution<float> distribution){
+	std::default_random_engine generator;
+
+	for (int i = 0; i < (this->numRows * this->numCols); i++){
+		this->data[i] = distribution(generator);
+	}
+}
+
+const float Matrix::get(int row, int col) {
 	return this->data[row*(this->numCols) + col];
+}
+
+void Matrix::set(int row, int col, float val) {
+	this->data[row*(this->numCols) + col] = val;
 }
 
 float Matrix::getNumRows() {
