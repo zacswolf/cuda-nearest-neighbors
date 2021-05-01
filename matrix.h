@@ -11,18 +11,31 @@
 
 using namespace std;
 
-struct Matrix {
-	vector<float> data;
+class Matrix {
+	public:
+		float *data;
+		int numRows;
+		int numCols;
 
-	int numRows;
-	int numCols;
+		Matrix(float *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols) { };
+		Matrix(int numRows, int numCols): data(new float[numRows*numCols]), numRows(numRows), numCols(numCols) { };
+		Matrix(vector<float> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols) { };
+
+
+		int index(int row, int col);
+
+		void fill(std::normal_distribution<float> distribution);
+
+		// Removes and returns column from data
+		pair<Matrix, Matrix> popColumn(int columnIndex);
+
+		static Matrix matMulSeq(Matrix &left, Matrix &right);
+
+		static float l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow);
+
+		void print();
+
+		~Matrix() {
+			// delete [] data;
+		}
 };
-
-void fill(Matrix &mat, std::normal_distribution<float> distribution);
-
-int index(Matrix &mat, int row, int col);
-
-// Removes and returns column from data
-pair<Matrix, Matrix> popColumn(Matrix &mat, int columnIndex);
-
-void print(Matrix &mat);
