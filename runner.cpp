@@ -8,34 +8,36 @@
 #include "nearest_neighbor_sequential.h"
 #include "exceptions.h"
 
-float* nearestNeighbor(Mode mode, bool gpu, Matrix data, Matrix labels, Matrix predictData) {
+enum class Mode {NORMAL, JLGAUSSIAN, JLBERNOULLI, JLFAST}; 
+
+float* nearestNeighbor(Mode mode, bool gpu, Matrix &trainData, Matrix &trainLabels, Matrix &testData, int newDim) {
 	switch(mode) {
 		case Mode::NORMAL:
 			if (gpu) {
 				throw NotImplementedException("GPU::NORMAL");
 			} else {
-				return seqNormal(data, labels, predictData);
+				return seqNormal(trainData, trainLabels, testData);
 			}
 			break;
 		case Mode::JLGAUSSIAN:
 			if (gpu) {
 				throw NotImplementedException("GPU::JLGAUSSIAN");
 			} else {
-				throw NotImplementedException("SEQUENTIAL::JLGAUSSIAN");
+				return seqJLGaussian(trainData, trainLabels, testData, newDim);
 			}
 			break;
 		case Mode::JLBERNOULLI:
 			if (gpu) {
 				throw NotImplementedException("GPU::JLBERNOULLI");
 			} else {
-				throw NotImplementedException("SEQUENTIAL::JLBERNOULLI");
+				return seqJLBernoulli(trainData, trainLabels, testData, newDim);
 			}
 			break;
 		case Mode::JLFAST:
 			if (gpu) {
 				throw NotImplementedException("GPU::JLFAST");
 			} else {
-				throw NotImplementedException("SEQUENTIAL::JLFAST");
+				return seqJLFast(trainData, trainLabels, testData, newDim);
 			}
 			break;
 		default:
@@ -47,22 +49,24 @@ float* nearestNeighbor(Mode mode, bool gpu, Matrix data, Matrix labels, Matrix p
 
 int main(int argc, char *argv[]) { 
 	// Arguments 
-	std::string inputDatasetPath;
-	std::string inputPredictDataPath;
+	std::string inputTrainDatasetPath;
+	std::string inputTestDatasetPath;
 	bool gpu = false;
 	Mode mode = Mode::NORMAL;
+	// float epsilon = -1.;
+	int newDim = -1;
 	
 	// Load Arguments
 	int opt;
-	while ((opt = getopt(argc, argv, "d:p:gm:")) != -1) {
+	while ((opt = getopt(argc, argv, "d:p:gm:e:n:")) != -1) {
 		switch (opt) {
 		case 'd':
-			// inputDatasetPath: a string specifying the path to the input dataset file
-			inputDatasetPath = optarg;
+			// inputTrainDatasetPath: a string specifying the path to the input traindata file
+			inputTrainDatasetPath = optarg;
 			break;
 		case 'p':
-			// inputPredictDataPath: a string specifying the path to the input predict points file
-			inputPredictDataPath = optarg;
+			// inputTestDatasetPath: a string specifying the path to the input testdata points file
+			inputTestDatasetPath = optarg;
 			break;
 		case 'g':
 			// gpu: a flag to enable the GPU implementations
@@ -72,6 +76,14 @@ int main(int argc, char *argv[]) {
 			// mode: an integer specifying the mode, look at Mode Enum
 			mode = static_cast<Mode>(atoi(optarg));
 			break;
+		// case 'e':
+		// 	// epsilon; a float specifying the accuracy of the approximation algorithm
+		// 	// required for non Normal modes
+		// 	epsilon = atof(optarg);
+		case 'n':
+			// newDim; a int specifying the new dimention of the approximation algorithm
+			// required for non Normal modes
+			newDim = atoi(optarg);
 		default:
 			break;
 		}
@@ -79,9 +91,9 @@ int main(int argc, char *argv[]) {
 
 	// Print Arguments
 	#if DEBUG
-		printf("inputDatasetPath %s   inputPredictDataPath %s   ", 
-			   inputDatasetPath.c_str(), 
-			   inputPredictDataPath.c_str());
+		printf("inputTrainDatasetPath %s   inputTestDatasetPath %s   ", 
+			   inputTrainDatasetPath.c_str(), 
+			   inputTestDatasetPath.c_str());
 		
 		const char* gpuStr = (gpu==true)? "GPU": "SEQUENTIAL";
 		switch (mode) {
@@ -99,54 +111,82 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	#endif
-	
 
-	// Get dataset
+	// Get train dataset
 	CSVDataLoader dl;
-	Matrix data = dl.loadFromFile(inputDatasetPath);
+	Matrix trainData = dl.loadFromFile(inputTrainDatasetPath);
 
-	// #if DEBUG
-	//     data.print();
-	// #endif
-
-	// Split labels from dataset
-	Matrix labels = data.popColumn(-1); 
+	// Split labels from train dataset
+	pair<Matrix, Matrix> p1 = trainData.popColumn(-1); 
+	printf("a\n");
+	Matrix trainLabels = p1.first;
+	// delete trainData;
+	trainData = p1.second;
 
 	#if DEBUG
-		printf("data\n");
-		data.print();
-		printf("labels\n");
-		labels.print();
+		printf("trainData\n");
+		trainData.print();
+		printf("trainLabels\n");
+		trainLabels.print();
 	#endif
 
-	
+	// Get test dataset
+	Matrix testData = dl.loadFromFile(inputTestDatasetPath);
 
-	// Get points to classify
-	Matrix predictData = dl.loadFromFile(inputPredictDataPath);
+	// Split labels from test dataset
+	pair<Matrix, Matrix> p2 = testData.popColumn(-1); 
+	Matrix testLabels = p2.first;
+	// delete testData;
+	testData = p2.second;
+
 	#if DEBUG
-		printf("predictData\n");
-		predictData.print();
+		printf("testData\n");
+		testData.print();
+		printf("testLabels\n");
+		testLabels.print();
 	#endif
 
 	// Check input file dimensions
-	if (data.getNumCols() != predictData.getNumCols()){
+	if (trainData.numCols != testData.numCols){
 		throw std::invalid_argument("Data and PredictData dimentions are not the same");
 	}
 
+	// check new dim
+	if (mode != Mode::NORMAL) {
+		if (newDim == -1) {
+			throw std::invalid_argument("Need to provide an newDim");
+		}
+		if ((0 >= newDim) || (newDim > trainData.numCols)) {
+			throw std::invalid_argument("The value of newDim should be in (0, dim]");
+		}
+	}
+
+	printf("Calling nearestNeighbor\n");
+
 	// Call nearest neighbors
-	float *predictedLabels = nearestNeighbor(mode, gpu, data, labels, predictData);
+	float *predictedTestLabels = nearestNeighbor(mode, gpu, trainData, trainLabels, testData, newDim);
 
-	int numPredictPoints = predictData.getNumRows();
+	printf("Finished nearestNeighbor\n");
 
-	if (predictedLabels != nullptr) {
-		printf("predictedLabels\n[\n");
-		for (int i = 0; i < numPredictPoints; i++) {
-			printf("%f\n", predictedLabels[i]);
+	int numTestPoints = testData.numRows;
+
+	int accuracySum = 0;
+	for (int i = 0; i < numTestPoints ; i++) {
+		accuracySum += predictedTestLabels[i]==testLabels.data[testLabels.index(i,0)];
+	}
+	printf("testAccuracy %.3f\n", static_cast<float>(accuracySum)/numTestPoints);
+
+	if (predictedTestLabels != nullptr) {
+		printf("predictedTestLabels\n[\n");
+		for (int i = 0; i < numTestPoints; i++) {
+			printf("%f\n", predictedTestLabels[i]);
 		}
 		printf("]\n");
 	} else {
-		printf("predictedLabels is null\n");
+		printf("predictedTestLabels is null\n");
 	}
+
+	printf("done\n");
 
 	return 0;
 }

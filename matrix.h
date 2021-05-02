@@ -2,25 +2,41 @@
 #pragma once
 #include <vector>
 #include <iostream>
+#include "random"
+#include "vector"
+#include "utility"
+
+#include "matrix_interface.h"
+#include "exceptions.h"
 
 using namespace std;
 
 class Matrix {
-	private:
-		vector<float> data;
+	public:
+		float *data;
 		int numRows;
 		int numCols;
-	public:
-		Matrix(vector<float> data, int numRows, int numCols);
 
-		float get(int row, int col);
+		Matrix(float *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols) { };
+		Matrix(int numRows, int numCols): data(new float[numRows*numCols]), numRows(numRows), numCols(numCols) { };
+		Matrix(vector<float> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols) { };
 
-		float getNumRows();
 
-		float getNumCols();
+		int index(int row, int col);
+
+		void fill(std::normal_distribution<float> distribution);
+		void fill(std::bernoulli_distribution distribution);
 
 		// Removes and returns column from data
-		Matrix popColumn(int columnIndex);
+		pair<Matrix, Matrix> popColumn(int columnIndex);
+
+		static Matrix matMulSeq(Matrix &left, Matrix &right);
+
+		static float l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow);
 
 		void print();
+
+		~Matrix() {
+			// delete [] data;
+		}
 };

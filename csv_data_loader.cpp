@@ -1,8 +1,11 @@
 #include "csv_data_loader.h"
 
 Matrix CSVDataLoader::loadFromFile(string path) {
+	// vector<float> *data = new vector<float>;
 	vector<float> data;
+	// vector<float> c = *dataH;
 
+	printf("A\n");
 	// Read CSV file, TODO: abstract this
 	// Process Input File
 	ifstream inputFile;
@@ -26,25 +29,25 @@ Matrix CSVDataLoader::loadFromFile(string path) {
 				data.push_back(stod(word));
 			}
 
-			// the last column is the label
-			// labels.push_back(data.back());
-			// data.pop_back();
-
 			// Define dim to be dimTemp if we are on the first row
 			dim = (!((bool)dim))*dimTemp + ((bool)dim)*dim;
 			
 			if (dimTemp != dim){
-				throw std::invalid_argument(path +" dimentions are not the same on row " + to_string(numPoints));
+				throw std::invalid_argument(path + " dimentions are not the same on row " + to_string(numPoints));
 			}
 		}
 
+		printf("B\n");
 		inputFile.close();
 
 		// for (int i = 0; i < data.size(); i++){
 		// 	printf("%f ", data[i]);
 		// }
 
-		return Matrix(data, numPoints, dim);
+		printf("C\n");
+		float *arr = new float[numPoints*dim];
+		std::copy(data.begin(), data.end(), arr);
+		return Matrix(arr, numPoints, dim);
 	} else {
 		cerr << "Unable to open input file: " << path << "\n";
 		exit(EXIT_FAILURE);
