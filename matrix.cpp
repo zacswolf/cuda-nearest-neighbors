@@ -3,7 +3,15 @@
 void Matrix::fill(std::normal_distribution<float> distribution) {
 	std::default_random_engine generator;
 
-	for (int i = 0; i < (this->numRows * this->numCols); i++){
+	for (int i = 0; i < (this->numRows * this->numCols); i++) {
+		this->data[i] = distribution(generator);
+	}
+}
+
+void Matrix::fill(std::bernoulli_distribution distribution) {
+	std::default_random_engine generator;
+
+	for (int i = 0; i < (this->numRows * this->numCols); i++) {
 		this->data[i] = distribution(generator);
 	}
 }

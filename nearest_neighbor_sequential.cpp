@@ -8,8 +8,6 @@ float* seqNormal(Matrix &trainData, Matrix &trainLabels, Matrix &testData) {
 
 	float *predictedLabels = new float(numPredictPoints);
 
-	trainLabels.print();
-
 	// Nearest neighbors
 	for (int currentTestPoint = 0; currentTestPoint < numPredictPoints; currentTestPoint++) {
 		int closestPoint = 0;
@@ -33,8 +31,8 @@ float* seqNormal(Matrix &trainData, Matrix &trainLabels, Matrix &testData) {
 float* seqJLGaussian(Matrix &trainData, Matrix &trainLabels, Matrix &testData, int newDim) {
 	int dim = trainData.numCols;
 
-	// Constant is 2
-	// int newDim = ceil(2*log(numDataPoints)/(epsilon*epsilon));
+	// Constant is ~3
+	// int newDim = ceil(3*log(numDataPoints)/(epsilon*epsilon));
 
 	// Make a random projection matrix of size dim x newDim
 	Matrix rpMat = Matrix(dim, newDim);
@@ -51,7 +49,23 @@ float* seqJLGaussian(Matrix &trainData, Matrix &trainLabels, Matrix &testData, i
 }
 
 float* seqJLBernoulli(Matrix &trainData, Matrix &trainLabels, Matrix &testData, int newDim) {
-	throw NotImplementedException("SEQUENTIAL::JLBERNOULLI");
+	int dim = trainData.numCols;
+
+	// Constant is ~3.5
+	// int newDim = ceil(3.5*log(numDataPoints)/(epsilon*epsilon));
+
+	// Make a random projection matrix of size dim x newDim
+	Matrix rpMat = Matrix(dim, newDim);
+	std::bernoulli_distribution distribution(.5);
+	rpMat.fill(distribution);
+
+	// newData = trainData x rpMat, numDataPoints by newDim
+	Matrix newData = Matrix::matMulSeq(trainData, rpMat);
+
+	// newPredict = testData x rpMat, numDataPoints by newDim
+	Matrix newPredict = Matrix::matMulSeq(testData, rpMat);
+
+	return seqNormal(newData, trainLabels, newPredict);
 }
 
 float* seqJLFast(Matrix &trainData, Matrix &trainLabels, Matrix &testData, int newDim) {

@@ -25,6 +25,7 @@ class Matrix {
 		int index(int row, int col);
 
 		void fill(std::normal_distribution<float> distribution);
+		void fill(std::bernoulli_distribution distribution);
 
 		// Removes and returns column from data
 		pair<Matrix, Matrix> popColumn(int columnIndex);
