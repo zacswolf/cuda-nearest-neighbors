@@ -4,8 +4,10 @@
 
 #include "matrix.h"
 
+
+template <typename T>
 class DataLoaderInterface {
 	public:
 		// returns data, num rows, num columns
-		virtual Matrix loadFromFile(string path) = 0;
+		virtual Matrix<T> loadFromFile(string path) = 0;
 };

@@ -1,20 +1,20 @@
 #include "nearest_neighbor_sequential.h"
 #include "vector"
-#define METHOD1 true
 
-float* seqNormal(Matrix &trainData, Matrix &trainLabels, Matrix &testData) {
+template <typename T, typename G>
+G* seqNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) {
 	int numPredictPoints = testData.numRows;
 	int numDataPoints = trainData.numRows;
 
-	float *predictedLabels = new float(numPredictPoints);
+	G *predictedLabels = new G(numPredictPoints);
 
 	// Nearest neighbors
 	for (int currentTestPoint = 0; currentTestPoint < numPredictPoints; currentTestPoint++) {
 		int closestPoint = 0;
-		float closestDistance = std::numeric_limits<float>::max();
+		double closestDistance = std::numeric_limits<double>::max();
 		for (int currentTrainPoint = 0; currentTrainPoint < numDataPoints; currentTrainPoint++) {
 			// l2 distance squared
-			float currentDistance = Matrix::l2RowDistanceSeq(trainData, currentTrainPoint, testData, currentTestPoint);
+			double currentDistance = Matrix<T>::l2RowDistanceSeq(trainData, currentTrainPoint, testData, currentTestPoint);
 
 			// Save if currentDistance < closestDistance
 			bool newClosest = (currentDistance < closestDistance);
@@ -28,46 +28,44 @@ float* seqNormal(Matrix &trainData, Matrix &trainLabels, Matrix &testData) {
 	return predictedLabels;
 }
 
-float* seqJLGaussian(Matrix &trainData, Matrix &trainLabels, Matrix &testData, int newDim) {
+template <typename T, typename G>
+G* seqJLGaussian(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim) {
 	int dim = trainData.numCols;
 
-	// Constant is ~3
-	// int newDim = ceil(3*log(numDataPoints)/(epsilon*epsilon));
-
 	// Make a random projection matrix of size dim x newDim
-	Matrix rpMat = Matrix(dim, newDim);
+	Matrix<float> rpMat = Matrix<float>(dim, newDim);
 	std::normal_distribution<float> distribution(0., 1.);
 	rpMat.fill(distribution);
 
 	// newData = trainData x rpMat, numDataPoints by newDim
-	Matrix newData = Matrix::matMulSeq(trainData, rpMat);
+	Matrix<T> newData = Matrix<T>::matMulSeq(trainData, rpMat);
 
 	// newPredict = testData x rpMat, numDataPoints by newDim
-	Matrix newPredict = Matrix::matMulSeq(testData, rpMat);
+	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
 
 	return seqNormal(newData, trainLabels, newPredict);
 }
 
-float* seqJLBernoulli(Matrix &trainData, Matrix &trainLabels, Matrix &testData, int newDim) {
+template <typename T, typename G>
+G* seqJLBernoulli(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim) {
 	int dim = trainData.numCols;
 
-	// Constant is ~3.5
-	// int newDim = ceil(3.5*log(numDataPoints)/(epsilon*epsilon));
-
 	// Make a random projection matrix of size dim x newDim
-	Matrix rpMat = Matrix(dim, newDim);
+	Matrix<bool> rpMat = Matrix<bool>(dim, newDim);
 	std::bernoulli_distribution distribution(.5);
 	rpMat.fill(distribution);
 
 	// newData = trainData x rpMat, numDataPoints by newDim
-	Matrix newData = Matrix::matMulSeq(trainData, rpMat);
+
+	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> newData = Matrix<T>::matMulSeq(trainData, rpMat);
 
 	// newPredict = testData x rpMat, numDataPoints by newDim
-	Matrix newPredict = Matrix::matMulSeq(testData, rpMat);
+	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
 
 	return seqNormal(newData, trainLabels, newPredict);
 }
 
-float* seqJLFast(Matrix &trainData, Matrix &trainLabels, Matrix &testData, int newDim) {
-	throw NotImplementedException("SEQUENTIAL::JLFAST");
+template <typename T, typename G>
+G* seqJLFast(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim) {
+		throw NotImplementedException("SEQUENTIAL::JLFAST");
 }
