@@ -3,7 +3,16 @@
 #include "utils.h"
 #include "matrix.h"
 
-float* seqNormal(Matrix &data, Matrix &labels, Matrix &predictData);
-float* seqJLGaussian(Matrix &data, Matrix &labels, Matrix &predictData, int newDim);
-float* seqJLBernoulli(Matrix &data, Matrix &labels, Matrix &predictData, int newDim);
-float* seqJLFast(Matrix &data, Matrix &labels, Matrix &predictData, int newDim);
+template <typename T, typename G>
+G* seqNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData);
+
+template <typename T, typename G>
+G* seqJLGaussian(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim);
+
+template <typename T, typename G>
+G* seqJLBernoulli(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim);
+
+template <typename T, typename G>
+G* seqJLFast(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim);
+
+#include "nearest_neighbor_sequential.tpp"

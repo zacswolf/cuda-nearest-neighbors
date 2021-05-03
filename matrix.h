@@ -11,15 +11,16 @@
 
 using namespace std;
 
+template <typename T>
 class Matrix {
 	public:
-		float *data;
-		int numRows;
-		int numCols;
+		T * const data;
+		const int numRows;
+		const int numCols;
 
-		Matrix(float *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols) { };
-		Matrix(int numRows, int numCols): data(new float[numRows*numCols]), numRows(numRows), numCols(numCols) { };
-		Matrix(vector<float> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols) { };
+		Matrix(T *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols) { };
+		Matrix(int numRows, int numCols): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols) { };
+		Matrix(vector<T> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols) { };
 
 
 		int index(int row, int col);
@@ -28,9 +29,17 @@ class Matrix {
 		void fill(std::bernoulli_distribution distribution);
 
 		// Removes and returns column from data
-		pair<Matrix, Matrix> popColumn(int columnIndex);
+		pair<Matrix<T>, Matrix<T>> popColumn(int columnIndex);
 
-		static Matrix matMulSeq(Matrix &left, Matrix &right);
+		template <typename G>
+		Matrix<G> convert() {
+			G *arr = new G[this->numRows * this->numCols];
+			std::copy(this->data, this->data + this->numRows * this->numCols, arr);
+			return Matrix<G>(arr, this->numRows, this->numCols);
+		}
+
+		template <typename G>
+		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulSeq(Matrix<T> &left, Matrix<G> &right);
 
 		static float l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow);
 
@@ -40,3 +49,5 @@ class Matrix {
 			// delete [] data;
 		}
 };
+
+#include "matrix.tpp"

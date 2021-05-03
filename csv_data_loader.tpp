@@ -1,11 +1,11 @@
 #include "csv_data_loader.h"
 
-Matrix CSVDataLoader::loadFromFile(string path) {
+template<typename T>
+Matrix<T> CSVDataLoader<T>::loadFromFile(string path) {
 	// vector<float> *data = new vector<float>;
 	vector<float> data;
 	// vector<float> c = *dataH;
 
-	printf("A\n");
 	// Read CSV file, TODO: abstract this
 	// Process Input File
 	ifstream inputFile;
@@ -37,19 +37,18 @@ Matrix CSVDataLoader::loadFromFile(string path) {
 			}
 		}
 
-		printf("B\n");
 		inputFile.close();
 
 		// for (int i = 0; i < data.size(); i++){
 		// 	printf("%f ", data[i]);
 		// }
 
-		printf("C\n");
 		float *arr = new float[numPoints*dim];
 		std::copy(data.begin(), data.end(), arr);
-		return Matrix(arr, numPoints, dim);
+		return Matrix<T>(arr, numPoints, dim);
 	} else {
 		cerr << "Unable to open input file: " << path << "\n";
 		exit(EXIT_FAILURE);
 	}
 }
+

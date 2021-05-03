@@ -10,7 +10,10 @@
 
 using namespace std;
 
-class CSVDataLoader: public DataLoaderInterface {
+template <typename T>
+class CSVDataLoader: public DataLoaderInterface<T> {
 	public:
-		Matrix loadFromFile(string path);
+		Matrix<T> loadFromFile(string path);
 };
+
+#include "csv_data_loader.tpp"
