@@ -110,13 +110,12 @@ int main(int argc, char *argv[]) {
 
 	// Get train dataset
 	CSVDataLoader<float> dl;
-	Matrix<float> trainData = dl.loadFromFile(inputTrainDatasetPath);
+	Matrix<float> trainDataRaw = dl.loadFromFile(inputTrainDatasetPath);
 
 	// Split labels from train dataset
-	pair<Matrix<float>, Matrix<float>> p1 = trainData.popColumn(-1); 
+	pair<Matrix<float>, Matrix<float>> p1 = trainDataRaw.popColumn(-1); 
 	Matrix<bool> trainLabels = p1.first.convert<bool>();
-	// delete trainData;
-	trainData = p1.second;
+	Matrix<float> trainData = p1.second;
 
 	#if DEBUG
 		printf("trainData\n");
@@ -126,13 +125,12 @@ int main(int argc, char *argv[]) {
 	#endif
 
 	// Get test dataset
-	Matrix<float> testData = dl.loadFromFile(inputTestDatasetPath);
-
+	Matrix<float> testDataRaw = dl.loadFromFile(inputTestDatasetPath);
+	
 	// Split labels from test dataset
-	pair<Matrix<float>, Matrix<float>> p2 = testData.popColumn(-1); 
+	pair<Matrix<float>, Matrix<float>> p2 = testDataRaw.popColumn(-1); 
 	Matrix<float> testLabels = p2.first;
-	// delete testData;
-	testData = p2.second;
+	Matrix<float> testData = p2.second;
 
 	#if DEBUG
 		printf("testData\n");

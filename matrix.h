@@ -14,9 +14,9 @@ using namespace std;
 template <typename T>
 class Matrix {
 	public:
-		T *data;
-		int numRows;
-		int numCols;
+		T * const data;
+		const int numRows;
+		const int numCols;
 
 		Matrix(T *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols) { };
 		Matrix(int numRows, int numCols): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols) { };
@@ -44,8 +44,6 @@ class Matrix {
 		static float l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow);
 
 		void print();
-
-
 
 		~Matrix() {
 			// delete [] data;
