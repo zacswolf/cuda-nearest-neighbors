@@ -8,6 +8,7 @@
 
 #include "matrix_interface.h"
 #include "exceptions.h"
+#include <cassert>
 
 using namespace std;
 
@@ -50,4 +51,4 @@ class Matrix {
 		}
 };
 
-#include "matrix.tpp"
+#include "matrix.cu"

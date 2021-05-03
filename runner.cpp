@@ -6,6 +6,7 @@
 #include "matrix.h"
 #include "csv_data_loader.h"
 #include "nearest_neighbor_sequential.h"
+#include "nearest_neighbor_gpu.h"
 #include "exceptions.h"
 
 enum class Mode {NORMAL, JLGAUSSIAN, JLBERNOULLI, JLFAST}; 
@@ -15,7 +16,7 @@ G* nearestNeighbor(Mode mode, bool gpu, Matrix<T> &trainData, Matrix<G> &trainLa
 	switch(mode) {
 		case Mode::NORMAL:
 			if (gpu) {
-				throw NotImplementedException("GPU::NORMAL");
+				return gpuNormal(trainData, trainLabels, testData);
 			} else {
 				return seqNormal(trainData, trainLabels, testData);
 			}
