@@ -9,10 +9,7 @@ NVCCFLAGS = -std=c++14
 # The build target 
 TARGET = runner
 
-all: $(TARGET)
-
-$(TARGET): $(TARGET).cpp
-	$(CC) $(CFLAGS) -o $(TARGET) $(TARGET).cpp 
+all: gpu
 
 gpu:
 	$(NVCC) $(NVCCFLAGS) -o runner.o -c runner.cpp -x cu

@@ -4,26 +4,18 @@
 //#include "cuda_matrix.h"
 
 template <typename T, typename G>
-__global__ void gpuNormalKernel(Matrix<T> *d_trainData, Matrix<G> *d_trainLabels, Matrix<T> *d_testData, int *d_closestPoint, double *d_closestDistance, G *d_predictedLabels, int numDataPoints) {
+__global__ void gpuNormalKernel(Matrix<T> *d_trainData, Matrix<G> *d_trainLabels, Matrix<T> *d_testData, double closestDistance, G *d_predictedLabels, int numDataPoints) {
     int i = blockIdx.x * blockDim.x + threadIdx.x; // test point index
-    //int j = blockIdx.y * blockDim.y + threadIdx.y; // train point index
-
-	//printf("i: %d\n", i);
 
 	int closestPoint = 0;
-	double closestDistance = d_closestDistance[0];
-	//printf("before distance: %d\n", (*d_trainData).data[0]);
+
 	for (int j = 0; j < numDataPoints; j++) {
 		double currentDistance = Matrix<T>::l2RowDistanceSeq(*d_trainData, j, *d_testData, i);
 		// Save if currentDistance < closestDistance
 		if (currentDistance < closestDistance) {
 			closestPoint = j;
 			closestDistance = currentDistance;
-			//printf("distance: %f\n", currentDistance);
-			//printf("closest point: %f\n", d_trainLabels->data[5]);
 			d_predictedLabels[i] = d_trainLabels->data[j];
-			//printf("d_predictlabels[%d] = %f\n", d_trainLabels->data[closestPoint]);
-			//printf("d_predictlabels[%d] = %d\n", i, d_trainLabels->data[closestPoint]);
 		}
 	}
 }
@@ -32,16 +24,15 @@ template <typename T, typename G>
 G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) {
 	int numPredictPoints = testData.numRows;
 	int numDataPoints = trainData.numRows;
+	double closestDistance = std::numeric_limits<double>::max();
 
 	G *predictedLabels = new G(numPredictPoints);
 	G *d_predictedLabels;
 	cudaMalloc(&d_predictedLabels, numPredictPoints * sizeof(G));
 
-	//Matrix<T>(arr, numPoints, dim);
 	Matrix<T> *d_trainData, *d_testData;
 	int trainDataBytes = (trainData.numRows * trainData.numCols) * sizeof(T);
 	int testDataBytes = (testData.numRows * testData.numCols) * sizeof(T);
-	//printf("Train data bytes: %d\n", trainDataBytes);
 	cudaMalloc(&d_trainData, sizeof(Matrix<T>));
 	cudaMalloc(&d_testData, sizeof(Matrix<T>));
 	cudaMemcpy(d_trainData, &trainData, sizeof(Matrix<T>), cudaMemcpyHostToDevice);
@@ -56,6 +47,7 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	cudaMemcpy((void *)&(d_trainData->data), &trainDataRaw, sizeof(T *), cudaMemcpyHostToDevice);
 	cudaMemcpy((void *)&(d_testData->data), &testDataRaw, sizeof(T *), cudaMemcpyHostToDevice);
 
+	// Repeat for train labels
 	Matrix<G> *d_trainLabels;
 	int trainLabelsBytes = (trainLabels.numRows * trainLabels.numCols) * sizeof(G);
 	cudaMalloc(&d_trainLabels, sizeof(Matrix<G>));
@@ -65,6 +57,9 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	cudaMemcpy(trainLabelsRaw, trainLabels.data, trainLabelsBytes, cudaMemcpyHostToDevice);
 	cudaMemcpy((void *)&(d_trainLabels->data), &trainLabelsRaw, sizeof(G *), cudaMemcpyHostToDevice);
 
+	printf("Running on GPU with %d predict points and %d data points \n", numPredictPoints, numDataPoints);
+	/*
+	// 2D kernel initializaiton code, now deprecated in favor of 1D
 	int *closestPoint = (int *)calloc(numPredictPoints, sizeof(int));
 	int *d_closestPoint;
 	cudaMalloc(&d_closestPoint, numPredictPoints * sizeof(int));
@@ -72,13 +67,9 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	for (int i = 0; i < numPredictPoints; i++) { closestDistance[i] = std::numeric_limits<double>::max(); }
 	double *d_closestDistance;
 	cudaMalloc(&d_closestDistance, numPredictPoints * sizeof(double));
-
 	cudaMemcpy(d_closestPoint, closestPoint, numPredictPoints * sizeof(int), cudaMemcpyHostToDevice);
 	cudaMemcpy(d_closestDistance, closestDistance, numPredictPoints * sizeof(double), cudaMemcpyHostToDevice);
 
-	printf("Running on GPU with %d predict points and %d data points \n", numPredictPoints, numDataPoints);
-	/*
-	//2D-code
 	int xBlock = (int)ceil(((float)numPredictPoints/512.0f));
 	int yBlock = (int)ceil(((float)numDataPoints/512.0f));
 	printf("block size should be: %d %d\n", xBlock, yBlock);
@@ -88,29 +79,18 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	dim3 gridSize = dim3(bx, by);
 	*/
 	int blockSize = (int)ceil(((float)numPredictPoints/512.0f));
-	gpuNormalKernel<<<blockSize, 512>>>(d_trainData, d_trainLabels, d_testData, d_closestPoint, d_closestDistance, d_predictedLabels, numDataPoints);
+	gpuNormalKernel<<<blockSize, 512>>>(d_trainData, d_trainLabels, d_testData, closestDistance, d_predictedLabels, numDataPoints);
 	cudaDeviceSynchronize();
 
 	cudaMemcpy(predictedLabels, d_predictedLabels, numPredictPoints * sizeof(G), cudaMemcpyDeviceToHost);
 
-	// Nearest neighbors
-	/*
-	for (int currentTestPoint = 0; currentTestPoint < numPredictPoints; currentTestPoint++) {
-		int closestPoint = 0;
-		double closestDistance = std::numeric_limits<double>::max();
-		for (int currentTrainPoint = 0; currentTrainPoint < numDataPoints; currentTrainPoint++) {
-			// l2 distance squared
-			double currentDistance = Matrix<T>::l2RowDistanceSeq(trainData, currentTrainPoint, testData, currentTestPoint);
-
-			// Save if currentDistance < closestDistance
-			bool newClosest = (currentDistance < closestDistance);
-
-			closestPoint = (!newClosest)*closestPoint + newClosest*currentTrainPoint;
-			closestDistance = (!newClosest)*closestDistance + newClosest*currentDistance;
-		}
-		predictedLabels[currentTestPoint] = trainLabels.data[closestPoint];
-	}
-	*/
+	cudaFree(d_predictedLabels);
+	cudaFree(d_trainData);
+	cudaFree(d_testData);
+	cudaFree(d_trainLabels);
+	cudaFree(trainDataRaw);
+	cudaFree(testDataRaw);
+	cudaFree(trainLabelsRaw);
 
 	return predictedLabels;
 }
@@ -131,8 +111,9 @@ G* gpuJLGaussian(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testDa
 	// newPredict = testData x rpMat, numDataPoints by newDim
 	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
 
-	return seqNormal(newData, trainLabels, newPredict);
+	return gpuNormal(newData, trainLabels, newPredict);
 }
+template bool* gpuJLGaussian<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<float>&, int);
 
 template <typename T, typename G>
 G* gpuJLBernoulli(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim) {
@@ -150,10 +131,12 @@ G* gpuJLBernoulli(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testD
 	// newPredict = testData x rpMat, numDataPoints by newDim
 	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
 
-	return seqNormal(newData, trainLabels, newPredict);
+	return gpuNormal(newData, trainLabels, newPredict);
 }
+template bool* gpuJLBernoulli<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<float>&, int);
 
 template <typename T, typename G>
 G* gpuJLFast(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim) {
-		throw NotImplementedException("SEQUENTIAL::JLFAST");
+		throw NotImplementedException("GPU::JLFAST");
 }
+template bool* gpuJLFast<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<float>&, int);

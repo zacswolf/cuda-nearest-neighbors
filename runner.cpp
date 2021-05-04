@@ -20,32 +20,32 @@ G* nearestNeighbor(Mode mode, bool gpu, Matrix<T> &trainData, Matrix<G> &trainLa
 			} else {
 				return seqNormal(trainData, trainLabels, testData);
 			}
-			break;
+			//break;
 		case Mode::JLGAUSSIAN:
 			if (gpu) {
-				throw NotImplementedException("GPU::JLGAUSSIAN");
+				return gpuJLGaussian(trainData, trainLabels, testData, newDim);
 			} else {
 				return seqJLGaussian(trainData, trainLabels, testData, newDim);
 			}
-			break;
+			//break;
 		case Mode::JLBERNOULLI:
 			if (gpu) {
-				throw NotImplementedException("GPU::JLBERNOULLI");
+				return gpuJLBernoulli(trainData, trainLabels, testData, newDim);
 			} else {
 				return seqJLBernoulli(trainData, trainLabels, testData, newDim);
 			}
-			break;
+			//break;
 		case Mode::JLFAST:
 			if (gpu) {
-				throw NotImplementedException("GPU::JLFAST");
+				return gpuJLFast(trainData, trainLabels, testData, newDim);
 			} else {
 				return seqJLFast(trainData, trainLabels, testData, newDim);
 			}
-			break;
+			//break;
 		default:
 			throw NotImplementedException("The nearestNeighbor mode");
 	}
-	return nullptr;
+	//return nullptr;
 }
 
 
