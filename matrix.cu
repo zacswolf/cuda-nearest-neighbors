@@ -23,6 +23,28 @@ __host__ __device__ int Matrix<T>::index(int row, int col) {
 	return row*(this->numCols) + col;
 }
 
+// Move matrix between CPU and device
+template <typename T>
+__host__ Matrix<T> Matrix<T>::toDevice(int device) {
+	if (this->device == 0) {
+		assert(device != 0);
+
+		int dataBytes = (this->numRows * this->numCols) * sizeof(T);
+		//cudaMalloc(&d_matrix, sizeof(Matrix<T>));
+		//cudaMemcpy(&d_matrix, this, sizeof(Matrix<T>), cudaMemcpyHostToDevice);
+		// Copy over data as well
+		T *dataRaw;
+		cudaMalloc(&dataRaw, dataBytes);
+		cudaMemcpy(dataRaw, this->data, dataBytes, cudaMemcpyHostToDevice);
+		// Set device data pointers
+		//cudaMemcpy((void *)&(this->data), &dataRaw, sizeof(T *), cudaMemcpyHostToDevice);
+
+		return Matrix<T>(dataRaw, this->numRows, this->numCols, device);
+	} else {
+		throw NotImplementedException("Matrix<T>::toDevice() for non-zero device");
+	}
+}
+
 // Removes and returns column from data  
 template <typename T>
 __host__ pair<Matrix<T>, Matrix<T>> Matrix<T>::popColumn(int columnIndex) {
@@ -92,6 +114,28 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	
 	return result;
 }
+
+/*
+__host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulGPU(Matrix<T> &left, Matrix<G> &right) {
+	int dim1 = left.numRows;
+	int dim2 = left.numCols;
+	int dim3 = right.numCols;
+	assert(dim2 == right.numRows);
+
+	Matrix result = Matrix<decltype(std::declval<T&>() * std::declval<G&>())>(dim1, dim3);
+
+	// Matrix Mult
+    for (int i = 0; i < dim1; i++) {
+        for (int j = 0; j < dim3; j++) {
+            for (int k = 0; k < dim2; k++) {
+                result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
+			}
+        }
+    }
+	
+	return result;
+}
+*/
 
 template <typename T>
 __host__ __device__ float Matrix<T>::l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow) {

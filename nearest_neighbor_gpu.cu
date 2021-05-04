@@ -4,18 +4,18 @@
 //#include "cuda_matrix.h"
 
 template <typename T, typename G>
-__global__ void gpuNormalKernel(Matrix<T> *d_trainData, Matrix<G> *d_trainLabels, Matrix<T> *d_testData, double closestDistance, G *d_predictedLabels, int numDataPoints) {
+__global__ void gpuNormalKernel(Matrix<T> d_trainData, Matrix<G> d_trainLabels, Matrix<T> d_testData, double closestDistance, G *d_predictedLabels, int numDataPoints) {
     int i = blockIdx.x * blockDim.x + threadIdx.x; // test point index
 
 	int closestPoint = 0;
-
+	
 	for (int j = 0; j < numDataPoints; j++) {
-		double currentDistance = Matrix<T>::l2RowDistanceSeq(*d_trainData, j, *d_testData, i);
+		double currentDistance = Matrix<T>::l2RowDistanceSeq(d_trainData, j, d_testData, i);
 		// Save if currentDistance < closestDistance
 		if (currentDistance < closestDistance) {
 			closestPoint = j;
 			closestDistance = currentDistance;
-			d_predictedLabels[i] = d_trainLabels->data[j];
+			d_predictedLabels[i] = d_trainLabels.data[j];
 		}
 	}
 }
@@ -30,13 +30,13 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	G *d_predictedLabels;
 	cudaMalloc(&d_predictedLabels, numPredictPoints * sizeof(G));
 
-	Matrix<T> *d_trainData, *d_testData;
+	/*
 	int trainDataBytes = (trainData.numRows * trainData.numCols) * sizeof(T);
 	int testDataBytes = (testData.numRows * testData.numCols) * sizeof(T);
-	cudaMalloc(&d_trainData, sizeof(Matrix<T>));
-	cudaMalloc(&d_testData, sizeof(Matrix<T>));
-	cudaMemcpy(d_trainData, &trainData, sizeof(Matrix<T>), cudaMemcpyHostToDevice);
-	cudaMemcpy(d_testData, &testData, sizeof(Matrix<T>), cudaMemcpyHostToDevice);
+	//cudaMalloc(&d_trainData, sizeof(Matrix<T>));
+	//cudaMalloc(&d_testData, sizeof(Matrix<T>));
+	//cudaMemcpy(&d_trainData, &trainData, sizeof(Matrix<T>), cudaMemcpyHostToDevice);
+	//cudaMemcpy(&d_testData, &testData, sizeof(Matrix<T>), cudaMemcpyHostToDevice);
 	// Copy over data as well
 	T *trainDataRaw, *testDataRaw;
 	cudaMalloc(&trainDataRaw, trainDataBytes);
@@ -44,18 +44,21 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	cudaMemcpy(trainDataRaw, trainData.data, trainDataBytes, cudaMemcpyHostToDevice);
 	cudaMemcpy(testDataRaw, testData.data, testDataBytes, cudaMemcpyHostToDevice);
 	// Set device data pointers
-	cudaMemcpy((void *)&(d_trainData->data), &trainDataRaw, sizeof(T *), cudaMemcpyHostToDevice);
-	cudaMemcpy((void *)&(d_testData->data), &testDataRaw, sizeof(T *), cudaMemcpyHostToDevice);
+	Matrix<T> d_trainData = Matrix<T>(trainDataRaw, trainData.numRows, trainData.numCols);
+	Matrix<T> d_testData = Matrix<T>(testDataRaw, testData.numRows, testData.numCols);
+	//cudaMemcpy((void *)&(d_trainData->data), &trainDataRaw, sizeof(T *), cudaMemcpyHostToDevice);
+	//cudaMemcpy((void *)&(d_testData->data), &testDataRaw, sizeof(T *), cudaMemcpyHostToDevice);
 
 	// Repeat for train labels
-	Matrix<G> *d_trainLabels;
 	int trainLabelsBytes = (trainLabels.numRows * trainLabels.numCols) * sizeof(G);
-	cudaMalloc(&d_trainLabels, sizeof(Matrix<G>));
-	cudaMemcpy(d_trainLabels, &trainLabels, sizeof(Matrix<G>), cudaMemcpyHostToDevice);
+	//cudaMalloc(&d_trainLabels, sizeof(Matrix<G>));
+	//cudaMemcpy(d_trainLabels, &trainLabels, sizeof(Matrix<G>), cudaMemcpyHostToDevice);
 	G *trainLabelsRaw;
 	cudaMalloc(&trainLabelsRaw, trainLabelsBytes);
 	cudaMemcpy(trainLabelsRaw, trainLabels.data, trainLabelsBytes, cudaMemcpyHostToDevice);
-	cudaMemcpy((void *)&(d_trainLabels->data), &trainLabelsRaw, sizeof(G *), cudaMemcpyHostToDevice);
+	Matrix<G> d_trainLabels = Matrix<G>(trainLabelsRaw, trainLabels.numRows, trainLabels.numCols);
+	//cudaMemcpy((void *)&(d_trainLabels->data), &trainLabelsRaw, sizeof(G *), cudaMemcpyHostToDevice);
+	*/
 
 	printf("Running on GPU with %d predict points and %d data points \n", numPredictPoints, numDataPoints);
 	/*
@@ -79,18 +82,20 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	dim3 gridSize = dim3(bx, by);
 	*/
 	int blockSize = (int)ceil(((float)numPredictPoints/512.0f));
-	gpuNormalKernel<<<blockSize, 512>>>(d_trainData, d_trainLabels, d_testData, closestDistance, d_predictedLabels, numDataPoints);
+	gpuNormalKernel<<<blockSize, 512>>>(trainData, trainLabels, testData, closestDistance, d_predictedLabels, numDataPoints);
 	cudaDeviceSynchronize();
 
 	cudaMemcpy(predictedLabels, d_predictedLabels, numPredictPoints * sizeof(G), cudaMemcpyDeviceToHost);
 
 	cudaFree(d_predictedLabels);
-	cudaFree(d_trainData);
-	cudaFree(d_testData);
+	//cudaFree(d_trainData);
+	//cudaFree(d_testData);
+	/*
 	cudaFree(d_trainLabels);
 	cudaFree(trainDataRaw);
 	cudaFree(testDataRaw);
 	cudaFree(trainLabelsRaw);
+	*/
 
 	return predictedLabels;
 }
