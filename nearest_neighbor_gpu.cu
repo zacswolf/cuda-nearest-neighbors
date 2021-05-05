@@ -103,20 +103,60 @@ template bool* gpuNormal<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<floa
 
 template <typename T, typename G>
 G* gpuJLGaussian(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim) {
+	printf("Moving shit to device\n");
+	Matrix<T> trainDataCPU = trainData.toDevice(0);
+	Matrix<G> trainLabelsCPU = trainLabels.toDevice(0);
+	Matrix<T> testDataCPU = testData.toDevice(0);
+
+
+
+
+	printf("Doing CPU shit\n");
+
 	int dim = trainData.numCols;
 
+
+
+	/*
+	// Make a random projection matrix of size dim x newDim
+	Matrix<float> rpMat = Matrix<float>(dim, newDim);
+	std::normal_distribution<float> distribution(0., 1.);
+	rpMat.fill(distribution);
+	Matrix<float> d_rpMat = rpMat.toDevice(trainData.device);
+
+	printf("Before Matrix<T>::matMulSeq\n");
+	// newTrainData = trainData x rpMat, numDataPoints by newDim
+	Matrix<T> newTrainData = Matrix<T>::matMulGPU(trainData, d_rpMat);
+	printf("After Matrix<T>::matMulSeq\n");
+
+	// newTestData = testData x rpMat, numDataPoints by newDim
+	Matrix<T> newTestData = Matrix<T>::matMulGPU(testData, d_rpMat);
+	*/
+	printf("Before fill\n");
 	// Make a random projection matrix of size dim x newDim
 	Matrix<float> rpMat = Matrix<float>(dim, newDim);
 	std::normal_distribution<float> distribution(0., 1.);
 	rpMat.fill(distribution);
 
-	// newData = trainData x rpMat, numDataPoints by newDim
-	Matrix<T> newData = Matrix<T>::matMulSeq(trainData, rpMat);
+	printf("Before newTrainData\n");
 
-	// newPredict = testData x rpMat, numDataPoints by newDim
-	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
+	// newTrainData = trainData x rpMat, numDataPoints by newDim
+	Matrix<T> newTrainData = Matrix<T>::matMulSeq(trainDataCPU, rpMat);
 
-	return gpuNormal(newData, trainLabels, newPredict);
+
+	printf("Before newTestData\n");
+	// newTestData = testData x rpMat, numDataPoints by newDim
+	Matrix<T> newTestData = Matrix<T>::matMulSeq(testDataCPU, rpMat);
+
+
+
+	printf("Moving shit back to GPU\n");
+	Matrix<T> newTrainDataGPU = newTrainData.toDevice(1);
+	Matrix<T> newTestDataGPU = newTestData.toDevice(1);
+
+
+	printf("calling gpuNormal()\n");
+	return gpuNormal(newTrainDataGPU, trainLabels, newTestDataGPU);
 }
 template bool* gpuJLGaussian<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<float>&, int);
 
@@ -129,14 +169,14 @@ G* gpuJLBernoulli(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testD
 	std::bernoulli_distribution distribution(.5);
 	rpMat.fill(distribution);
 
-	// newData = trainData x rpMat, numDataPoints by newDim
+	// newTrainData = trainData x rpMat, numDataPoints by newDim
 
-	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> newData = Matrix<T>::matMulSeq(trainData, rpMat);
+	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> newTrainData = Matrix<T>::matMulSeq(trainData, rpMat);
 
-	// newPredict = testData x rpMat, numDataPoints by newDim
-	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
+	// newTestData = testData x rpMat, numDataPoints by newDim
+	Matrix<T> newTestData = Matrix<T>::matMulSeq(testData, rpMat);
 
-	return gpuNormal(newData, trainLabels, newPredict);
+	return gpuNormal(newTrainData, trainLabels, newTestData);
 }
 template bool* gpuJLBernoulli<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<float>&, int);
 

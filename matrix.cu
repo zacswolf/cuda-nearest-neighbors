@@ -27,7 +27,7 @@ __host__ __device__ int Matrix<T>::index(int row, int col) {
 template <typename T>
 __host__ Matrix<T> Matrix<T>::toDevice(int device) {
 	if (this->device == 0) {
-		assert(device != 0);
+		assert(device != this->device);
 
 		int dataBytes = (this->numRows * this->numCols) * sizeof(T);
 		//cudaMalloc(&d_matrix, sizeof(Matrix<T>));
@@ -38,6 +38,15 @@ __host__ Matrix<T> Matrix<T>::toDevice(int device) {
 		cudaMemcpy(dataRaw, this->data, dataBytes, cudaMemcpyHostToDevice);
 		// Set device data pointers
 		//cudaMemcpy((void *)&(this->data), &dataRaw, sizeof(T *), cudaMemcpyHostToDevice);
+
+		return Matrix<T>(dataRaw, this->numRows, this->numCols, device);
+	} else if (this->device != 0 && device == 0) {
+		// Move back to CPU
+		assert(device != this->device);
+
+		int dataBytes = (this->numRows * this->numCols) * sizeof(T);
+		T *dataRaw = new T[this->numRows * this->numCols];
+		cudaMemcpy(this->data, dataRaw, dataBytes, cudaMemcpyDeviceToHost);
 
 		return Matrix<T>(dataRaw, this->numRows, this->numCols, device);
 	} else {
@@ -115,27 +124,58 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	return result;
 }
 
-/*
-__host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulGPU(Matrix<T> &left, Matrix<G> &right) {
-	int dim1 = left.numRows;
-	int dim2 = left.numCols;
-	int dim3 = right.numCols;
-	assert(dim2 == right.numRows);
+template <typename T, typename G>
+__global__ void matMulGPUKernel(Matrix<T> left, Matrix<G> right, Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result, int dimLeft, int dimRight, int dimCenter) {
+	int a = blockIdx.x * blockDim.x + threadIdx.x;
+	int b = blockIdx.y * blockDim.y + threadIdx.y;
 
-	Matrix result = Matrix<decltype(std::declval<T&>() * std::declval<G&>())>(dim1, dim3);
+	//printf("i: %d, j%d\n", i, j);
 
-	// Matrix Mult
-    for (int i = 0; i < dim1; i++) {
-        for (int j = 0; j < dim3; j++) {
-            for (int k = 0; k < dim2; k++) {
-                result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
+	/*
+	for (int k = 0; k < dimCenter; k++) {
+		result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
+	}
+	*/
+	if (a == 0 && b == 0) {
+		for (int i = 0; i < dimLeft; i++) {
+			for (int j = 0; j < dimRight; j++) {
+				for (int k = 0; k < dimCenter; k++) {
+					result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
+				}
 			}
-        }
-    }
-	
-	return result;
+		}
+	}
 }
-*/
+
+template <typename T>
+template <typename G>
+__host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulGPU(Matrix<T> &left, Matrix<G> &right) {
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	int dimRight = right.numCols;
+	assert(dimCenter == right.numRows);
+
+	assert(left.device == right.device);
+	assert(left.device != 0);
+
+	//Matrix result = Matrix<decltype(std::declval<T&>() * std::declval<G&>())>(dimLeft, dimRight, left.device);
+
+	// Launching a 2D kernel
+	int xBlock = (int)ceil(((float)dimLeft/512.0f));
+	int yBlock = (int)ceil(((float)dimRight/512.0f));
+	printf("block size should be: %d %d, dimLeft: %d, dimRight: %d\n", xBlock, yBlock, dimLeft, dimRight);
+	dim3 blockSize(xBlock, yBlock);
+	int bx = (dimLeft + blockSize.x - 1)/blockSize.x;
+	int by = (dimRight + blockSize.y - 1)/blockSize.y;
+	dim3 gridSize = dim3(bx, by);
+	//matMulGPUKernel<<<gridSize, blockSize>>>(left, right, result, dimLeft, dimRight, dimCenter);
+	//cudaDeviceSynchronize();
+
+	Matrix<T> leftCPU = left.toDevice(0);
+	Matrix<T> rightCPU = right.toDevice(0);
+	
+	return matMulSeq(leftCPU, rightCPU).toDevice(1);
+}
 
 template <typename T>
 __host__ __device__ float Matrix<T>::l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow) {

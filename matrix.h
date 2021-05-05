@@ -23,6 +23,7 @@ class Matrix {
 		Matrix(T *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols), device(0) { };
 		Matrix(T *data, int numRows, int numCols, int device): data(data), numRows(numRows), numCols(numCols), device(device) { };
 		Matrix(int numRows, int numCols): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(0) { };
+		Matrix(int numRows, int numCols, int device): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(device) { };
 		Matrix(vector<T> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols), device(0) { };
 
 		int index(int row, int col);
@@ -44,6 +45,9 @@ class Matrix {
 
 		template <typename G>
 		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulSeq(Matrix<T> &left, Matrix<G> &right);
+
+		template <typename G>
+		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulGPU(Matrix<T> &left, Matrix<G> &right);
 
 		static float l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow);
 
