@@ -12,8 +12,15 @@ using namespace std;
 
 template <typename T>
 class CSVDataLoader: public DataLoaderInterface<T> {
+	private:
+		int labelColumnIndex;
+		bool hasLabelColumn = false;
+
 	public:
-		Matrix<T> loadFromFile(string path);
+		CSVDataLoader() : hasLabelColumn(false) { }
+		CSVDataLoader(int labelColumnIndex) : labelColumnIndex(labelColumnIndex), hasLabelColumn(true) { }
+
+		Matrix<T> load(string path);
 };
 
 #include "csv_data_loader.tpp"

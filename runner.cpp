@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 
 	// Get train dataset
 	CSVDataLoader<float> dl;
-	Matrix<float> trainDataRaw = dl.loadFromFile(inputTrainDatasetPath);
+	Matrix<float> trainDataRaw = dl.load(inputTrainDatasetPath);
 
 	// Split labels from train dataset
 	pair<Matrix<float>, Matrix<float>> p1 = trainDataRaw.popColumn(-1); 
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 	#endif
 
 	// Get test dataset
-	Matrix<float> testDataRaw = dl.loadFromFile(inputTestDatasetPath);
+	Matrix<float> testDataRaw = dl.load(inputTestDatasetPath);
 	
 	// Split labels from test dataset
 	pair<Matrix<float>, Matrix<float>> p2 = testDataRaw.popColumn(-1); 

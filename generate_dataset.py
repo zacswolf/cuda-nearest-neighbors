@@ -5,11 +5,19 @@ import numpy as np
 def main(args):
 	rng = np.random.default_rng(args.seed)
 
-	data = rng.normal(size=(args.num_points, args.dimension))
+	data = np.zeros((args.num_points, args.dimension))
+
+	group0 = args.num_points//2
+	group1 = args.num_points-group0
+	
+	data[:group0] = rng.normal(loc=0., scale=args.sd, size=(group0, args.dimension))
+	data[group0:] = rng.normal(loc=args.loc, scale=args.sd, size=(group1, args.dimension))
+
 	if (args.label):
-		labels = data[:, 0] > 0
+		labels = np.arange(0, data.shape[0]) >= group0
 		data = np.column_stack((data, labels))
 
+	rng.shuffle(data)
 	np.savetxt(args.output, data, delimiter=', ', fmt='%f')
 
 if __name__ == "__main__":
@@ -40,6 +48,14 @@ if __name__ == "__main__":
 						'--label', 
 						action='store_true',
 						help='generate labels in the last column')
+	parser.add_argument('--loc',
+						type=float,
+						help='location of distribution 1',
+						default=1.)
+	parser.add_argument('--sd',
+						type=float,
+						help='standard deviation of distributions',
+						default=1.)
 
 	args = parser.parse_args()
 

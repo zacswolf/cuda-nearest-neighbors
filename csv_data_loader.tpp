@@ -1,7 +1,7 @@
 #include "csv_data_loader.h"
 
 template<typename T>
-Matrix<T> CSVDataLoader<T>::loadFromFile(string path) {
+Matrix<T> CSVDataLoader<T>::load(string path) {
 	// vector<float> *data = new vector<float>;
 	vector<float> data;
 	// vector<float> c = *dataH;
@@ -39,13 +39,16 @@ Matrix<T> CSVDataLoader<T>::loadFromFile(string path) {
 
 		inputFile.close();
 
-		// for (int i = 0; i < data.size(); i++){
-		// 	printf("%f ", data[i]);
-		// }
-
 		float *arr = new float[numPoints*dim];
 		std::copy(data.begin(), data.end(), arr);
+
+		// if (this->hasLabelColumn) {
+
+		// 	// Split labels from train dataset
+		// 	return Matrix<T>(arr, numPoints, dim).popColumn(-1);
+		// } else {
 		return Matrix<T>(arr, numPoints, dim);
+		// }
 	} else {
 		cerr << "Unable to open input file: " << path << "\n";
 		exit(EXIT_FAILURE);

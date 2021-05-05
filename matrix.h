@@ -24,7 +24,7 @@ class Matrix {
 		Matrix(vector<T> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols) { };
 
 
-		int index(int row, int col);
+		inline int index(int row, int col);
 
 		void fill(std::normal_distribution<float> distribution);
 		void fill(std::bernoulli_distribution distribution);
