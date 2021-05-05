@@ -155,10 +155,20 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	printf("Calling nearestNeighbor\n");
+	bool *predictedTestLabels;
+	if (gpu) {
+		Matrix<float> d_trainData = trainData.toDevice(gpu);
+		Matrix<bool> d_trainLabels = trainLabels.toDevice(gpu);
+		Matrix<float> d_testData = testData.toDevice(gpu);
 
-	// Call nearest neighbors
-	bool *predictedTestLabels = nearestNeighbor(mode, gpu, trainData, trainLabels, testData, newDim);
+		// Call nearest neighbors
+		printf("Calling nearestNeighbor\n");
+		predictedTestLabels = nearestNeighbor(mode, gpu, d_trainData, d_trainLabels, d_testData, newDim);
+	} else {
+		// Call nearest neighbors
+		printf("Calling nearestNeighbor\n");
+		predictedTestLabels = nearestNeighbor(mode, gpu, trainData, trainLabels, testData, newDim);
+	}
 
 	printf("Finished nearestNeighbor\n");
 
