@@ -23,13 +23,14 @@ class Matrix {
 		Matrix(T *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols), device(0) { };
 		Matrix(T *data, int numRows, int numCols, int device): data(data), numRows(numRows), numCols(numCols), device(device) { };
 		Matrix(int numRows, int numCols): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(0) { };
-		Matrix(int numRows, int numCols, int device): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(device) { };
+		// Matrix(int numRows, int numCols, int device): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(device) { };
 		Matrix(vector<T> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols), device(0) { };
 
 		int index(int row, int col);
 
 		void fill(std::normal_distribution<float> distribution);
 		void fill(std::bernoulli_distribution distribution);
+		void fill(T val);
 
 		// Removes and returns column from data
 		pair<Matrix<T>, Matrix<T>> popColumn(int columnIndex);

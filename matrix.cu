@@ -2,7 +2,7 @@
 
 template <typename T>
 __host__ void Matrix<T>::fill(std::normal_distribution<float> distribution) {
-	std::default_random_engine generator;
+	std::default_random_engine generator(0);
 
 	for (int i = 0; i < (this->numRows * this->numCols); i++) {
 		this->data[i] = distribution(generator);
@@ -11,10 +11,21 @@ __host__ void Matrix<T>::fill(std::normal_distribution<float> distribution) {
 
 template <typename T>
 __host__ void Matrix<T>::fill(std::bernoulli_distribution distribution) {
-	std::default_random_engine generator;
+	std::default_random_engine generator(0);
 
 	for (int i = 0; i < (this->numRows * this->numCols); i++) {
 		this->data[i] = distribution(generator);
+	}
+}
+
+template <typename T>
+__host__ void Matrix<T>::fill(T val) {
+	if (this->device==0){
+		for (int i = 0; i < (this->numRows * this->numCols); i++) {
+			this->data[i] = val;
+		}
+	} else {
+		cudaMemset(this->data, val, (this->numRows * this->numCols)*sizeof(T));
 	}
 }
 
@@ -26,31 +37,33 @@ __host__ __device__ int Matrix<T>::index(int row, int col) {
 // Move matrix between CPU and device
 template <typename T>
 __host__ Matrix<T> Matrix<T>::toDevice(int device) {
-	if (this->device == 0) {
-		assert(device != this->device);
+	if (this->device == 0 && device != 0) {
+		// assert(device != this->device);
+
 
 		int dataBytes = (this->numRows * this->numCols) * sizeof(T);
-		//cudaMalloc(&d_matrix, sizeof(Matrix<T>));
-		//cudaMemcpy(&d_matrix, this, sizeof(Matrix<T>), cudaMemcpyHostToDevice);
-		// Copy over data as well
+
 		T *dataRaw;
 		cudaMalloc(&dataRaw, dataBytes);
 		cudaMemcpy(dataRaw, this->data, dataBytes, cudaMemcpyHostToDevice);
-		// Set device data pointers
-		//cudaMemcpy((void *)&(this->data), &dataRaw, sizeof(T *), cudaMemcpyHostToDevice);
 
-		return Matrix<T>(dataRaw, this->numRows, this->numCols, device);
+
+		Matrix<T> ret = Matrix<T>(dataRaw, this->numRows, this->numCols, device);
+
+		return ret;
 	} else if (this->device != 0 && device == 0) {
 		// Move back to CPU
-		assert(device != this->device);
+		// assert(device != this->device);
 
 		int dataBytes = (this->numRows * this->numCols) * sizeof(T);
-		T *dataRaw = new T[this->numRows * this->numCols];
-		cudaMemcpy(this->data, dataRaw, dataBytes, cudaMemcpyDeviceToHost);
 
-		return Matrix<T>(dataRaw, this->numRows, this->numCols, device);
+		T *dataRaw = new T[this->numRows * this->numCols];
+		cudaMemcpy(dataRaw, this->data, dataBytes, cudaMemcpyDeviceToHost);
+
+		Matrix<T> ret = Matrix<T>(dataRaw, this->numRows, this->numCols, device);
+		return ret;
 	} else {
-		throw NotImplementedException("Matrix<T>::toDevice() for non-zero device");
+		throw NotImplementedException("Matrix<T>::toDevice()");
 	}
 }
 
@@ -105,17 +118,18 @@ __host__ pair<Matrix<T>, Matrix<T>> Matrix<T>::popColumn(int columnIndex) {
 template <typename T>
 template <typename G>
 __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulSeq(Matrix<T> &left, Matrix<G> &right) {
-	int dim1 = left.numRows;
-	int dim2 = left.numCols;
-	int dim3 = right.numCols;
-	assert(dim2 == right.numRows);
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	int dimRight = right.numCols;
+	assert(dimCenter == right.numRows);
 
-	Matrix result = Matrix<decltype(std::declval<T&>() * std::declval<G&>())>(dim1, dim3);
+	Matrix result = Matrix<decltype(std::declval<T&>() * std::declval<G&>())>(dimLeft, dimRight);
+	result.fill(0);
 
 	// Matrix Mult
-    for (int i = 0; i < dim1; i++) {
-        for (int j = 0; j < dim3; j++) {
-            for (int k = 0; k < dim2; k++) {
+    for (int i = 0; i < dimLeft; i++) {
+        for (int j = 0; j < dimRight; j++) {
+            for (int k = 0; k < dimCenter; k++) {
                 result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
 			}
         }
@@ -125,26 +139,14 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 }
 
 template <typename T, typename G>
-__global__ void matMulGPUKernel(Matrix<T> left, Matrix<G> right, Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result, int dimLeft, int dimRight, int dimCenter) {
-	int a = blockIdx.x * blockDim.x + threadIdx.x;
-	int b = blockIdx.y * blockDim.y + threadIdx.y;
+__global__ void matMulGPUKernel2D(Matrix<T> left, Matrix<G> right, Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result, int dimLeft, int dimRight, int dimCenter) {
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
 
-	//printf("i: %d, j%d\n", i, j);
-
-	/*
 	for (int k = 0; k < dimCenter; k++) {
 		result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
 	}
-	*/
-	if (a == 0 && b == 0) {
-		for (int i = 0; i < dimLeft; i++) {
-			for (int j = 0; j < dimRight; j++) {
-				for (int k = 0; k < dimCenter; k++) {
-					result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
-				}
-			}
-		}
-	}
+
 }
 
 template <typename T>
@@ -158,23 +160,19 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	assert(left.device == right.device);
 	assert(left.device != 0);
 
-	//Matrix result = Matrix<decltype(std::declval<T&>() * std::declval<G&>())>(dimLeft, dimRight, left.device);
+	Matrix result = Matrix<decltype(std::declval<T&>() * std::declval<G&>())>(dimLeft, dimRight).toDevice(left.device); // TODO: improve this
+	result.fill(0);
 
 	// Launching a 2D kernel
 	int xBlock = (int)ceil(((float)dimLeft/512.0f));
 	int yBlock = (int)ceil(((float)dimRight/512.0f));
-	printf("block size should be: %d %d, dimLeft: %d, dimRight: %d\n", xBlock, yBlock, dimLeft, dimRight);
 	dim3 blockSize(xBlock, yBlock);
 	int bx = (dimLeft + blockSize.x - 1)/blockSize.x;
 	int by = (dimRight + blockSize.y - 1)/blockSize.y;
 	dim3 gridSize = dim3(bx, by);
-	//matMulGPUKernel<<<gridSize, blockSize>>>(left, right, result, dimLeft, dimRight, dimCenter);
-	//cudaDeviceSynchronize();
+	matMulGPUKernel2D<<<gridSize, blockSize>>>(left, right, result, dimLeft, dimRight, dimCenter);
 
-	Matrix<T> leftCPU = left.toDevice(0);
-	Matrix<T> rightCPU = right.toDevice(0);
-	
-	return matMulSeq(leftCPU, rightCPU).toDevice(1);
+	return result;
 }
 
 template <typename T>
@@ -192,13 +190,14 @@ __host__ __device__ float Matrix<T>::l2RowDistanceSeq(Matrix &left, int leftRow,
 }
 
 template <typename T>
-__host__ void Matrix<T>::print() {
+__host__ __device__ void Matrix<T>::print() {
 	if (this->numCols != 1) {
 		printf("[\n");
 		for (int row = 0; row < this->numRows; row++) {
 			printf("[ ");
 			for (int col = 0; col < this->numCols; col++) {
-				cout << this->data[this->index(row, col)] << " ";
+				printf("%s ", std::to_string(this->data[this->index(row, col)]).c_str());
+				// cout << this->data[this->index(row, col)] << " ";
 			}
 			printf("]\n");
 		}
@@ -206,7 +205,8 @@ __host__ void Matrix<T>::print() {
 	} else {
 		printf("[");
 		for (int row = 0; row < this->numRows; row++) {
-			cout << this->data[this->index(row, 0)] << " ";
+			// cout << this->data[this->index(row, 0)] << " ";
+			printf("%s ", std::to_string(this->data[this->index(row, 0)]).c_str());
 		}
 		printf("]\n");
 	}

@@ -37,13 +37,13 @@ G* seqJLGaussian(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testDa
 	std::normal_distribution<float> distribution(0., 1.);
 	rpMat.fill(distribution);
 
-	// newData = trainData x rpMat, numDataPoints by newDim
-	Matrix<T> newData = Matrix<T>::matMulSeq(trainData, rpMat);
+	// newTrainData = trainData x rpMat, numDataPoints by newDim
+	Matrix<T> newTrainData = Matrix<T>::matMulSeq(trainData, rpMat);
 
-	// newPredict = testData x rpMat, numDataPoints by newDim
-	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
+	// newTestData = testData x rpMat, numDataPoints by newDim
+	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> newTestData = Matrix<T>::matMulSeq(testData, rpMat);
 
-	return seqNormal(newData, trainLabels, newPredict);
+	return seqNormal(newTrainData, trainLabels, newTestData);
 }
 
 template <typename T, typename G>
@@ -55,14 +55,14 @@ G* seqJLBernoulli(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testD
 	std::bernoulli_distribution distribution(.5);
 	rpMat.fill(distribution);
 
-	// newData = trainData x rpMat, numDataPoints by newDim
+	// newTrainData = trainData x rpMat, numDataPoints by newDim
 
-	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> newData = Matrix<T>::matMulSeq(trainData, rpMat);
+	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> newTrainData = Matrix<T>::matMulSeq(trainData, rpMat);
 
-	// newPredict = testData x rpMat, numDataPoints by newDim
-	Matrix<T> newPredict = Matrix<T>::matMulSeq(testData, rpMat);
+	// newTestData = testData x rpMat, numDataPoints by newDim
+	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> newTestData = Matrix<T>::matMulSeq(testData, rpMat);
 
-	return seqNormal(newData, trainLabels, newPredict);
+	return seqNormal(newTrainData, trainLabels, newTestData);
 }
 
 template <typename T, typename G>

@@ -157,7 +157,6 @@ int main(int argc, char *argv[]) {
 
 	bool *predictedTestLabels;
 	if (gpu) {
-		printf("Moving data to device\n");
 		Matrix<float> d_trainData = trainData.toDevice(gpu);
 		Matrix<bool> d_trainLabels = trainLabels.toDevice(gpu);
 		Matrix<float> d_testData = testData.toDevice(gpu);
