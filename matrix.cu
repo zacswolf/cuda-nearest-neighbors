@@ -138,15 +138,81 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	return result;
 }
 
+#define TILE_WIDTH 32
+
+template <typename T, typename G>
+__global__ void matMulGPUKernel2DShmem(Matrix<T> left, Matrix<G> right, Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result, int dimLeft, int dimRight, int dimCenter) {
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+	__shared__ T leftCache[TILE_WIDTH][TILE_WIDTH];
+	__shared__ T rightCache[TILE_WIDTH][TILE_WIDTH];
+
+	double matmulValue = 0;
+
+	for (int m = 0; m < (TILE_WIDTH + dimLeft - 1)/TILE_WIDTH; m++) {
+		leftCache[threadIdx.x][threadIdx.y] = left.data[left.index(i, j)];
+		rightCache[threadIdx.x][threadIdx.y] = right.data[right.index(i, j)];
+		__syncthreads();
+
+		for (int k = 0; k < TILE_WIDTH; k++) {
+			matmulValue += leftCache[threadIdx.x][k] * rightCache[k][threadIdx.y];
+		}
+	}
+
+	//printf("SHMEM Matmul value: %f\n", matmulValue);
+	//printf("dimleft: %d, Block idx: %d\n", dimLeft, blockIdx.x);
+
+	result.data[result.index(i, j)] = matmulValue;
+
+	/*
+	int leftBlockSize = (int)ceil(((float)dimLeft/(float)blockDim.x));
+	int rightBlockSize = (int)ceil(((float)dimRight/(float)blockDim.y));
+	//printf("left block size: %d, right block size: %d\n", leftBlockSize, rightBlockSize);
+	//printf("i: %d, left block size: %d, should append block: %d\n", i, leftBlockSize, i % leftBlockSize == 0);
+	//printf("i threadidx: %d\n", threadIdx.x);
+	int leftShmemSize = (dimCenter*dimLeft)/leftBlockSize;
+	int rightShmemSize = (dimCenter*dimRight)/rightBlockSize;
+	//printf("needed left sharedmem size: %d\n", leftShmemSize);
+	//printf("needed right sharedmem size: %d\n", rightShmemSize);
+
+	__shared__ T leftCache[1024];
+	__shared__ T rightCache[1024];
+
+	int iIndex = i/(blockIdx.x+1);
+	printf("i: %d, j, iIndex: %d\n", i, j, iIndex);
+	for (int k = 0; k < dimCenter; k++) {
+		
+		leftCache[i * leftBlockSize + k] = left.data[left.index(i, k)]; 
+		
+	}
+
+	//rightCache[j * rightBlockSize + k] = right.data[right.index(k, j)];
+	__syncthreads();
+
+	double matmulValue = 0;
+	for (int k = 0; k < dimCenter; k++) {
+		matmulValue += leftCache[i * dimLeft + k] * rightCache[j * dimRight + k];
+	}
+	//printf("SHMEM Matmul value: %f\n", matmulValue);
+	//printf("dimleft: %d, Block idx: %d\n", dimLeft, blockIdx.x);
+
+	result.data[result.index(i, j)] = matmulValue;
+	*/
+}
+
 template <typename T, typename G>
 __global__ void matMulGPUKernel2D(Matrix<T> left, Matrix<G> right, Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result, int dimLeft, int dimRight, int dimCenter) {
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	int j = blockIdx.y * blockDim.y + threadIdx.y;
 
+	decltype(std::declval<T&>() * std::declval<G&>()) matmulValue = 0;
 	for (int k = 0; k < dimCenter; k++) {
-		result.data[result.index(i, j)] += left.data[left.index(i, k)] * right.data[right.index(k, j)];
+		matmulValue += left.data[left.index(i, k)] * right.data[right.index(k, j)];
 	}
+	printf("Matmul value: %f\n", matmulValue);
 
+	result.data[result.index(i, j)] = matmulValue;
 }
 
 template <typename T>
@@ -157,6 +223,8 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	int dimRight = right.numCols;
 	assert(dimCenter == right.numRows);
 
+	printf("Matmul with %d x %d matrix and %d x %d matrix\n", dimLeft, dimCenter, right.numRows, dimRight);
+
 	assert(left.device == right.device);
 	assert(left.device != 0);
 
@@ -164,13 +232,21 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	result.fill(0);
 
 	// Launching a 2D kernel
+	/*
 	int xBlock = (int)ceil(((float)dimLeft/512.0f));
 	int yBlock = (int)ceil(((float)dimRight/512.0f));
-	dim3 blockSize(xBlock, yBlock);
+	dim3 blockSize(16, 16);
 	int bx = (dimLeft + blockSize.x - 1)/blockSize.x;
 	int by = (dimRight + blockSize.y - 1)/blockSize.y;
 	dim3 gridSize = dim3(bx, by);
 	matMulGPUKernel2D<<<gridSize, blockSize>>>(left, right, result, dimLeft, dimRight, dimCenter);
+	*/
+	//int blockDim = 32;
+	dim3 blockSize(TILE_WIDTH, TILE_WIDTH);
+	int xGrid = (int)ceil(((float)dimLeft/(float)TILE_WIDTH));
+	int yGrid = (int)ceil(((float)dimRight/(float)TILE_WIDTH));
+	dim3 gridSize(xGrid, yGrid);
+	matMulGPUKernel2DShmem<<<gridSize, blockSize>>>(left, right, result, dimLeft, dimRight, dimCenter);
 
 	return result;
 }
