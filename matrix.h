@@ -30,7 +30,11 @@ class Matrix {
 
 		void fill(std::normal_distribution<float> distribution);
 		void fill(std::bernoulli_distribution distribution);
+		void fill(std::uniform_int_distribution<> distribution);
+
 		void fill(T val);
+
+		Matrix<T> transpose();
 
 		// Removes and returns column from data
 		pair<Matrix<T>, Matrix<T>> popColumn(int columnIndex);
@@ -49,6 +53,14 @@ class Matrix {
 
 		template <typename G>
 		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulGPU(Matrix<T> &left, Matrix<G> &right);
+
+		template <typename G>
+		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulDiagSeq(Matrix<T> &left, Matrix<G> &diag);
+
+		static Matrix<T> matMulWalshHadamardSeq(Matrix<T> left);
+		
+		template <typename G>
+		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulWithOneHotSeq(Matrix<T> left, Matrix<G> oneHot);
 
 		static float l2RowDistanceSeq(Matrix &left, int leftRow, Matrix &right, int rightRow);
 

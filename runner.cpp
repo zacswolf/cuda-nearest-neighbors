@@ -140,6 +140,10 @@ int main(int argc, char *argv[]) {
 		testLabels.print();
 	#endif
 
+	//CLEANUP
+	delete [] trainDataRaw.data;
+	delete [] testDataRaw.data;
+
 	// Check input file dimensions
 	if (trainData.numCols != testData.numCols){
 		throw std::invalid_argument("Data and PredictData dimentions are not the same");

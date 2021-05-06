@@ -14,6 +14,15 @@ __host__ void Matrix<T>::fill(std::bernoulli_distribution distribution) {
 	std::default_random_engine generator(0);
 
 	for (int i = 0; i < (this->numRows * this->numCols); i++) {
+		this->data[i] = distribution(generator)*2 - 1;
+	}
+}
+
+template <typename T>
+__host__ void Matrix<T>::fill(std::uniform_int_distribution<> distribution) {
+	std::default_random_engine generator(0);
+
+	for (int i = 0; i < (this->numRows * this->numCols); i++) {
 		this->data[i] = distribution(generator);
 	}
 }
@@ -27,6 +36,25 @@ __host__ void Matrix<T>::fill(T val) {
 	} else {
 		cudaMemset(this->data, val, (this->numRows * this->numCols)*sizeof(T));
 	}
+}
+
+template <typename T>
+Matrix<T> Matrix<T>::transpose() {
+	// int temp = this->numRows;
+	// this->numRows = this->numCols;
+	// this->numCols = temp;
+
+
+	// T* data = new T[this->numCols* this->numRows];
+	Matrix<T> thisT = Matrix<T>(this->numCols, this->numRows);
+
+	for (int r = 0; r < this->numRows; r++) {
+		for (int c = 0; c < this->numCols; c++) {
+			thisT.data[thisT.index(c,r)] = this->data[this->index(r,c)];
+		}
+	}
+
+	return thisT;
 }
 
 template <typename T>
@@ -172,6 +200,110 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	dim3 gridSize = dim3(bx, by);
 	matMulGPUKernel2D<<<gridSize, blockSize>>>(left, right, result, dimLeft, dimRight, dimCenter);
 
+	return result;
+}
+
+template <typename T>
+template <typename G>
+__host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulDiagSeq(Matrix<T> &left, Matrix<G> &diag) {
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	assert(dimCenter == diag.numRows);
+	assert(diag.numCols == 1);
+
+	// Mult mat x D
+	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result = Matrix<T>(dimLeft, dimCenter);
+
+	for (int i = 0; i < dimLeft; i++) {
+		for (int k = 0; k < dimCenter; k++) {
+			result.data[result.index(i, k)] = diag.data[k] * left.data[left.index(i, k)];
+		}
+	}
+
+	return result;
+}
+
+template <typename T>
+__host__ Matrix<T> Matrix<T>::matMulWalshHadamardSeq(Matrix<T> left) {
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	
+	Matrix<T> result = Matrix<T>(dimLeft, dimCenter);
+
+	assert(dimCenter > 1); // TODO support this
+	
+	int log2dim = ceil(log2(dimCenter));
+	int hShape = pow(2,log2dim);
+	
+	for (int pointIdx=0; pointIdx < dimLeft; pointIdx++) {  // should parallize
+		int order = 1;
+		int stride = 2;
+		int split = stride/2;
+
+		Matrix<T> mats [] = {Matrix<T>(hShape, 1), Matrix<T>(hShape, 1)};
+		mats[0].fill(0);
+		mats[1].fill(0);
+
+		int newIdx = 0;
+
+		for (int i = 0; i < dimCenter; i++) {
+			mats[newIdx].data[i] = left.data[left.index(pointIdx, i)];
+		}
+
+
+		for (order = 2; order < log2dim; order++) { // cant parallize
+			newIdx = !newIdx;
+
+			stride = pow(2, order);
+			split = stride/2;
+
+			for (int strideId = 0; strideId < hShape/stride; strideId++) { // could parallize, these two loops combined are of over original dim
+				for (int idx = 0; idx < split; idx++) {  // could parallize
+					// c0
+					mats[newIdx].data[strideId*stride+idx] = mats[!newIdx].data[strideId*stride+idx] + mats[!newIdx].data[strideId*stride+idx+(split/2)];
+
+					// c1
+					mats[newIdx].data[strideId*stride+idx+split] = mats[!newIdx].data[strideId*stride+idx+split] - mats[!newIdx].data[strideId*stride+idx+split+(split/2)];
+				}
+			}
+
+			// idk why this doesnt work
+			// for (int idx = 0; idx < hShape; idx++) { // could parallize, these two loops combined are of over original dim
+			// 	mats[newIdx].data[idx] = mats[!newIdx].data[idx] + mats[!newIdx].data[idx + (split/2)];
+			// }
+
+		}
+
+		for (int d = 0; d < dimCenter; d++) {
+			result.data[result.index(pointIdx, d)] = mats[newIdx].data[d];
+		}
+
+		//CLEANUP
+		delete [] mats[0].data;
+		delete [] mats[1].data;
+	} 
+
+	return result;
+}
+
+template <typename T>
+template <typename G>
+__host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulWithOneHotSeq(Matrix<T> left, Matrix<G> oneHot) {
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	int dimRight = oneHot.numCols;
+
+	assert(oneHot.numRows == 1);
+
+	Matrix<T> result = Matrix<T>(dimLeft, dimRight);
+
+	for (int i = 0; i < dimLeft; i++) { // should parallize
+		for(int j = 0; j < dimRight; j++) {
+			int onehotdim = oneHot.data[j];
+			result.data[result.index(i, j)] = left.data[left.index(i, onehotdim)];
+		}
+	}
+	
 	return result;
 }
 
