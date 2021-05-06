@@ -30,6 +30,8 @@ class Matrix {
 
 		void fill(std::normal_distribution<float> distribution);
 		void fill(std::bernoulli_distribution distribution);
+		void fill(std::uniform_int_distribution<> distribution);
+
 		void fill(T val);
 
 		Matrix<T> transpose();

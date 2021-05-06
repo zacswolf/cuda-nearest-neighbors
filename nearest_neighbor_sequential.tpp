@@ -98,23 +98,19 @@ G* seqJLFast(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, 
 	// SHD is a newDim x dim matrix
 
 	// scalar for SHD
-	float scalar = sqrt(static_cast<float>(dim)/newDim);
+	// float scalar = sqrt(static_cast<float>(dim)/newDim);
 
 	// make S, a vector of indices to represent the columns of a matrix with one-hot cols
 	Matrix<int> S = Matrix<int>(1, newDim);
 
 	std::uniform_int_distribution<> distribution(0, dim-1);
-	std::default_random_engine generator(0);
-
-	for (int i = 0; i < S.numCols; i++) {
-		S.data[i] = distribution(generator);
-	}
+	S.fill(distribution);
 
 	// make, D a Rademacher vector (unif +- 1) representing a diagonal matrix
 	Matrix<int8_t> D = Matrix<int8_t>(dim, 1);
+
 	std::bernoulli_distribution distribution2(.5);
 	D.fill(distribution2);
-
 
 	// apply SHD
 	Matrix<T> newTrainData = applySHD(trainData, newDim, D, S);

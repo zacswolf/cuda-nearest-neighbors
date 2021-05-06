@@ -19,6 +19,15 @@ __host__ void Matrix<T>::fill(std::bernoulli_distribution distribution) {
 }
 
 template <typename T>
+__host__ void Matrix<T>::fill(std::uniform_int_distribution<> distribution) {
+	std::default_random_engine generator(0);
+
+	for (int i = 0; i < (this->numRows * this->numCols); i++) {
+		this->data[i] = distribution(generator);
+	}
+}
+
+template <typename T>
 __host__ void Matrix<T>::fill(T val) {
 	if (this->device==0){
 		for (int i = 0; i < (this->numRows * this->numCols); i++) {
@@ -254,13 +263,18 @@ __host__ Matrix<T> Matrix<T>::matMulWalshHadamardSeq(Matrix<T> left) {
 					mats[newIdx].data[strideId*stride+idx] = mats[!newIdx].data[strideId*stride+idx] + mats[!newIdx].data[strideId*stride+idx+(split/2)];
 
 					// c1
-					mats[newIdx].data[strideId*stride+idx+split] = mats[!newIdx].data[strideId*stride+idx+split] - mats[!newIdx].data[strideId*stride+idx+(split/2)+split];
+					mats[newIdx].data[strideId*stride+idx+split] = mats[!newIdx].data[strideId*stride+idx+split] - mats[!newIdx].data[strideId*stride+idx+split+(split/2)];
 				}
 			}
 
+			// idk why this doesnt work
+			// for (int idx = 0; idx < hShape; idx++) { // could parallize, these two loops combined are of over original dim
+			// 	mats[newIdx].data[idx] = mats[!newIdx].data[idx] + mats[!newIdx].data[idx + (split/2)];
+			// }
+
 		}
 
-		for (int d=0; d<dimCenter; d++) {
+		for (int d = 0; d < dimCenter; d++) {
 			result.data[result.index(pointIdx, d)] = mats[newIdx].data[d];
 		}
 
