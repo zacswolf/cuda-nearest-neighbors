@@ -24,7 +24,7 @@ def get_times(outputStr):
 
 
 def run_code(mode, gpu, d_prime):
-	timing_runs = 4
+	timing_runs = 1
 	
 	if gpu:
 		gpu_str = "-g"
@@ -57,14 +57,15 @@ def run_code(mode, gpu, d_prime):
 
 def main(run, pickle_path):
 	# Build
-	# subprocess.run(['make'])
+	if (run):
+		subprocess.run(['make'])
 
 	# num train points, num test points, dim
 	dataset_files = [
-		(100, 100, 100),
-		(1000, 1000, 100),
-		# (1000, 1000, 1000),
-		# (1000, 1000, 10000),
+		(500, 500, 100),
+		(5000, 5000, 100),
+		(5000, 5000, 1000),
+		# (5000, 5000, 10000),
 		]
 
 
@@ -78,46 +79,57 @@ def main(run, pickle_path):
 		record = []
 		for dataset_file in dataset_files:
 			#gen test files
+			print("generating data files ", dataset_file)
 			subprocess.run(['python3', 'generate_dataset.py', '-n', str(dataset_file[0]), '-d', str(dataset_file[2]), '-o', 'trainData.csv', '-l', '--loc', '100', '--sd', '4'])
 			subprocess.run(['python3', 'generate_dataset.py', '-n', str(dataset_file[1]), '-d', str(dataset_file[2]), '-o', 'testData.csv', '-l', '-s', '1', '--loc', '100', '--sd', '4'])
-			for gpu in [False]:
+			print("done generating data files")
+
+			for gpu in [False, True]:
 				for m in exact_modes:
 					stats = run_code(m, gpu, dataset_file[2])
-					output = [str(dataset_file), m, gpu, dataset_file[2]]+list(stats)
+					output = [str(dataset_file), m, gpu, 1, dataset_file[2]]+list(stats)
 					print(output)
 					record.append(output)
 				for m in approx_modes:
 					for d_prime_per in approximate_dims_percent:
 						d_prime = math.ceil(d_prime_per*dataset_file[2])
 						stats = run_code(m, gpu, d_prime)
-						output = [str(dataset_file), m, gpu, d_prime]+list(stats)
+						output = [str(dataset_file), m, gpu, d_prime_per, d_prime]+list(stats)
 						print(output)
 						record.append(output)
 
 		df = pd.DataFrame(record, columns=[
-						  'File', 'mode', 'gpu', "d_prime", "time", "accuracy"])
+						  'File', 'mode', 'gpu', "d_prime_per", "d_prime", "time", "accuracy"])
 		print("writing to disk")
 		df.to_pickle(pickle_path)
 
 	# Analyze
 	df = pd.read_pickle(pickle_path)
 
-	df["ModeGpuDprime"] = list(zip(df["mode"], df["gpu"], df["d_prime"]))
+	df_gpu = df[df['gpu']==True]
+	df_seq = df[df['gpu']==False]
 
-	df["ModeAndGpu"] = list(zip(df["mode"], df["gpu"]))
-
-	analyze(df, "mode", "time", label_all_xaxis=True)
-
+	# gpu and seq comparison
 	analyze(df, "gpu", "time", label_all_xaxis=True)
 
-	analyze(df, "ModeAndGpu", "time", label_all_xaxis=True)
+	#  mode accuracy comparison
+	analyze(df, "mode", "accuracy", label_all_xaxis=True, name="ModeAccuracy")
 
-	analyze(df, "ModeGpuDprime", "time", label_all_xaxis=True)
+	for (df, gpu_str) in [(df_gpu, "GPU"), (df_seq, "SEQ")]:
+
+		analyze(df, "mode", "time", label_all_xaxis=True, name="mode"+gpu_str)
+
+		df["ModeDprimePercent"] = list(zip(df["mode"], df["d_prime_per"]))
+
+		analyze(df, "ModeDprimePercent", "time", label_all_xaxis=True, name="ModeDprimePercent"+gpu_str)
 
 	#analyze(df[df["Mode"]!="SEQUENTIAL"], "Mode", "TimePerIter", label_all_xaxis=True)
 
 
-def analyze(df, x, y, label_all_xaxis=False):
+def analyze(df, x, y, label_all_xaxis=False, name = ""):
+	if (name == ""):
+		name = x
+
 	df_ = df.groupby(['File', x], as_index=False)[y].mean()
 	df_ = df_.pivot(index=x, columns='File', values=y)
 
@@ -137,10 +149,10 @@ def analyze(df, x, y, label_all_xaxis=False):
 	plt.xticks(rotation=30*int(label_all_xaxis))
 	plt.autoscale()
 
-	fig.suptitle('%s Plots' % x, fontsize=16)
+	fig.suptitle('%s Plots' % name, fontsize=16)
 	fig.text(0.04, 0.5, '%s (ms)' % y, va='center', rotation='vertical')
 	#plt.ylabel('%s (ns)')
-	fig.savefig('%s.png' % x, bbox_inches = "tight")
+	fig.savefig('%s.png' % name, bbox_inches = "tight")
 
 
 if __name__ == "__main__":
