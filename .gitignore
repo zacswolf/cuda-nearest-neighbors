@@ -2,6 +2,8 @@
 *.csv
 runner
 .gdbinit
+*.png
+*.pkl
 
 # Cuda gitignore
 *.i

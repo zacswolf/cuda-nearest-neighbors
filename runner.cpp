@@ -59,10 +59,11 @@ int main(int argc, char *argv[]) {
 	bool gpu = false;
 	Mode mode = Mode::NORMAL;
 	int newDim = -1;
+	bool outputLabels = false;
 	
 	// Load Arguments
 	int opt;
-	while ((opt = getopt(argc, argv, "d:p:gm:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "d:p:gm:n:l")) != -1) {
 		switch (opt) {
 		case 'd':
 			// inputTrainDatasetPath: a string specifying the path to the input traindata file
@@ -84,6 +85,10 @@ int main(int argc, char *argv[]) {
 			// newDim; a int specifying the new dimention of the approximation algorithm
 			// required for non Normal modes
 			newDim = atoi(optarg);
+		case 'l':
+			// outputLabels: a flag to print the predicted test labels
+			outputLabels = true;
+			break;
 		default:
 			break;
 		}
@@ -162,7 +167,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	bool *predictedTestLabels;
+	const bool *predictedTestLabels;
 	if (gpu) {
 		Matrix<float> d_trainData = trainData.toDevice(gpu);
 		Matrix<bool> d_trainLabels = trainLabels.toDevice(gpu);
@@ -185,21 +190,28 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < numTestPoints ; i++) {
 		accuracySum += predictedTestLabels[i]==testLabels.data[testLabels.index(i,0)];
 	}
-	printf("testAccuracy %.3f\n", static_cast<float>(accuracySum)/numTestPoints);
 
-	if (predictedTestLabels != nullptr) {
-		printf("predictedTestLabels\n[");
-		for (int i = 0; i < numTestPoints; i++) {
-			cout << predictedTestLabels[i] << " ";
+	float testAccuracy = static_cast<float>(accuracySum)/numTestPoints;
+	printf("testAccuracy %.3f\n", testAccuracy);
+
+	if (outputLabels) {
+		if (predictedTestLabels != nullptr) {
+			printf("predictedTestLabels\n[");
+			for (int i = 0; i < numTestPoints; i++) {
+				cout << predictedTestLabels[i] << " ";
+			}
+			printf("]\n");
+		} else {
+			printf("predictedTestLabels is null\n");
 		}
-		printf("]\n");
-	} else {
-		printf("predictedTestLabels is null\n");
 	}
 	
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 	printf("End-to-end time: %f ms\n", elapsed);
+
+	// final outputs for analytics program
+	printf("%f, %f\n", testAccuracy, elapsed);
 
 	return 0;
 }
