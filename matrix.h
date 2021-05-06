@@ -32,6 +32,8 @@ class Matrix {
 		void fill(std::bernoulli_distribution distribution);
 		void fill(T val);
 
+		Matrix<T> transpose();
+
 		// Removes and returns column from data
 		pair<Matrix<T>, Matrix<T>> popColumn(int columnIndex);
 

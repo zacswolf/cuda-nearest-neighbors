@@ -14,7 +14,7 @@ __host__ void Matrix<T>::fill(std::bernoulli_distribution distribution) {
 	std::default_random_engine generator(0);
 
 	for (int i = 0; i < (this->numRows * this->numCols); i++) {
-		this->data[i] = distribution(generator);
+		this->data[i] = distribution(generator)*2 - 1;
 	}
 }
 
@@ -27,6 +27,25 @@ __host__ void Matrix<T>::fill(T val) {
 	} else {
 		cudaMemset(this->data, val, (this->numRows * this->numCols)*sizeof(T));
 	}
+}
+
+template <typename T>
+Matrix<T> Matrix<T>::transpose() {
+	// int temp = this->numRows;
+	// this->numRows = this->numCols;
+	// this->numCols = temp;
+
+
+	// T* data = new T[this->numCols* this->numRows];
+	Matrix<T> thisT = Matrix<T>(this->numCols, this->numRows);
+
+	for (int r = 0; r < this->numRows; r++) {
+		for (int c = 0; c < this->numCols; c++) {
+			thisT.data[thisT.index(c,r)] = this->data[this->index(r,c)];
+		}
+	}
+
+	return thisT;
 }
 
 template <typename T>

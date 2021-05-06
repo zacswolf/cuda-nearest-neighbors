@@ -2,6 +2,7 @@
 #pragma once
 #include "utils.h"
 #include "matrix.h"
+#include "math.h"
 
 template <typename T, typename G>
 G* seqNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData);
