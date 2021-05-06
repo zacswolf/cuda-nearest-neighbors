@@ -1,6 +1,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <fstream>
+#include <chrono>
 
 #include "utils.h"
 #include "matrix.h"
@@ -50,6 +51,8 @@ G* nearestNeighbor(Mode mode, bool gpu, Matrix<T> &trainData, Matrix<G> &trainLa
 
 
 int main(int argc, char *argv[]) { 
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
 	// Arguments 
 	std::string inputTrainDatasetPath;
 	std::string inputTestDatasetPath;
@@ -193,6 +196,10 @@ int main(int argc, char *argv[]) {
 	} else {
 		printf("predictedTestLabels is null\n");
 	}
+	
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+	double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+	printf("End-to-end time: %f ms\n", elapsed);
 
 	return 0;
 }
