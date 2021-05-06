@@ -28,7 +28,7 @@ __host__ void Matrix<T>::fill(std::uniform_int_distribution<> distribution) {
 }
 
 template <typename T>
-__host__ void Matrix<T>::fill(T val) {
+__host__ __device__ void Matrix<T>::fill(T val) {
 	if (this->device==0){
 		for (int i = 0; i < (this->numRows * this->numCols); i++) {
 			this->data[i] = val;
@@ -252,6 +252,125 @@ __host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::ma
 	cudaEventElapsedTime(&milliseconds, start, stop);
 	printf("GPU matmul took %f ms\n", milliseconds);
 
+	return result;
+}
+
+template <typename T, typename G>
+__global__ void matMulDiagGPUKernel(Matrix<T> left, Matrix<G> diag, Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result, int dimCenter) {
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+	for (int k = 0; k < dimCenter; k++) {
+		result.data[result.index(i, k)] = diag.data[k] * left.data[left.index(i, k)];
+	}
+}
+
+template <typename T>
+template <typename G>
+__host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulDiagGPU(Matrix<T> &left, Matrix<G> &diag) {
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	assert(dimCenter == diag.numRows);
+	assert(diag.numCols == 1);
+
+	// Mult mat x D
+	Matrix<decltype(std::declval<T&>() * std::declval<G&>())> result = Matrix<T>(dimLeft, dimCenter).toDevice(left.device);
+
+	int blockSize = (int)ceil(((float)dimLeft/512.0f));
+	matMulDiagGPUKernel<<<blockSize, 512>>>(left, diag, result, dimCenter);
+	cudaDeviceSynchronize();
+
+	return result;
+}
+
+template <typename T>
+__global__ void matMulWalshHadamardGPUKernel(Matrix<T> left, Matrix<T> result, int dimLeft, int dimCenter) {
+	int pointIdx = blockIdx.x * blockDim.x + threadIdx.x;
+
+	int log2dim = ceil(log2(dimCenter));
+	int hShape = pow(2,log2dim);
+
+	int order = 1;
+	int stride = 2;
+	int split = stride/2;
+
+	Matrix<T> mats [] = {Matrix<T>(hShape, 1), Matrix<T>(hShape, 1)};
+	mats[0].fill(0);
+	mats[1].fill(0);
+
+	int newIdx = 0;
+
+	for (int i = 0; i < dimCenter; i++) {
+		mats[newIdx].data[i] = left.data[left.index(pointIdx, i)];
+	}
+
+
+	for (order = 2; order < log2dim; order++) { // cant parallize
+		newIdx = !newIdx;
+
+		stride = pow(2, order);
+		split = stride/2;
+
+		for (int strideId = 0; strideId < hShape/stride; strideId++) {
+			for (int idx = 0; idx < split; idx++) { 
+				// c0
+				mats[newIdx].data[strideId*stride+idx] = mats[!newIdx].data[strideId*stride+idx] + mats[!newIdx].data[strideId*stride+idx+(split/2)];
+
+				// c1
+				mats[newIdx].data[strideId*stride+idx+split] = mats[!newIdx].data[strideId*stride+idx+split] - mats[!newIdx].data[strideId*stride+idx+split+(split/2)];
+			}
+		}
+	}
+
+	for (int d = 0; d < dimCenter; d++) {
+		result.data[result.index(pointIdx, d)] = mats[newIdx].data[d];
+	}
+
+	//CLEANUP
+	delete [] mats[0].data;
+	delete [] mats[1].data;
+}
+
+template <typename T>
+__host__ Matrix<T> Matrix<T>::matMulWalshHadamardGPU(Matrix<T> left) {
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	
+	Matrix<T> result = Matrix<T>(dimLeft, dimCenter).toDevice(left.device);
+
+	assert(dimCenter > 1); // TODO support this
+	
+	int blockSize = (int)ceil(((float)dimLeft/512.0f));
+	matMulWalshHadamardGPUKernel<<<blockSize, 512>>>(left, result, dimLeft, dimCenter);
+	cudaDeviceSynchronize();
+
+	return result;
+}
+
+template <typename T, typename G>
+__global__ void matMulWithOneHotGPUKernel(Matrix<T> left, Matrix<G> oneHot, Matrix<T> result, int dimRight) {
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+	for(int j = 0; j < dimRight; j++) {
+		int onehotdim = oneHot.data[j];
+		result.data[result.index(i, j)] = left.data[left.index(i, onehotdim)];
+	}
+}
+
+template <typename T>
+template <typename G>
+__host__ Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulWithOneHotGPU(Matrix<T> left, Matrix<G> oneHot) {
+	int dimLeft = left.numRows;
+	int dimCenter = left.numCols;
+	int dimRight = oneHot.numCols;
+
+	assert(oneHot.numRows == 1);
+
+	Matrix<T> result = Matrix<T>(dimLeft, dimRight).toDevice(left.device);
+
+	int blockSize = (int)ceil(((float)dimLeft/512.0f));
+	matMulWithOneHotGPUKernel<<<blockSize, 512>>>(left, oneHot, result, dimRight);
+	cudaDeviceSynchronize();
+	
 	return result;
 }
 

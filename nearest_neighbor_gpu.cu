@@ -85,8 +85,60 @@ G* gpuJLBernoulli(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testD
 }
 template bool* gpuJLBernoulli<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<float>&, int);
 
+
+template <typename T>
+Matrix<T> applySHDGPU(Matrix<T> &mat, int newDim, Matrix<int8_t> &D, Matrix<int> &S) {
+	int dim = mat.numCols;
+	int numPoints = mat.numRows;
+	
+	assert(dim==D.numRows);
+	assert(newDim==S.numCols);
+
+	// Mult mat x D
+	Matrix<decltype(std::declval<T&>() * std::declval<int8_t&>())> result1 = Matrix<T>::matMulDiagGPU(mat, D);
+
+	// Mult result1 x H where H is a Walsh-Hadamard matrix.
+	Matrix<decltype(std::declval<T&>() * std::declval<int8_t&>())> result2 = Matrix<decltype(std::declval<T&>() * std::declval<int8_t&>())>::matMulWalshHadamardGPU(result1);
+
+	// Mult result2 x S 
+	Matrix<decltype(std::declval<T&>() * std::declval<int8_t&>())> result3 = Matrix<decltype(std::declval<T&>() * std::declval<int8_t&>())>::matMulWithOneHotGPU(result2, S);
+
+	return result3;
+}
+
 template <typename T, typename G>
 G* gpuJLFast(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData, int newDim) {
-		throw NotImplementedException("GPU::JLFAST");
+	assert(trainData.numCols == testData.numCols);
+	int dim = trainData.numCols;
+
+	// SHD is a newDim x dim matrix
+
+	// scalar for SHD
+	// float scalar = sqrt(static_cast<float>(dim)/newDim);
+
+	// make S, a vector of indices to represent the columns of a matrix with one-hot cols
+	Matrix<int> S = Matrix<int>(1, newDim);
+
+	std::uniform_int_distribution<> distribution(0, dim-1);
+	S.fill(distribution);
+
+	// make, D a Rademacher vector (unif +- 1) representing a diagonal matrix
+	Matrix<int8_t> D = Matrix<int8_t>(dim, 1);
+
+	std::bernoulli_distribution distribution2(.5);
+	D.fill(distribution2);
+
+	Matrix<int> d_S = S.toDevice(trainData.device);
+	Matrix<int8_t> d_D = D.toDevice(trainData.device);
+
+	// apply SHD
+	Matrix<T> newTrainData = applySHDGPU(trainData, newDim, d_D, d_S);
+	Matrix<T> newTestData = applySHDGPU(testData, newDim, d_D, d_S);
+
+	//CLEANUP
+	delete [] S.data;
+	delete [] D.data;
+	
+	return gpuNormal(newTrainData, trainLabels, newTestData);
 }
 template bool* gpuJLFast<float, bool>(Matrix<float>&, Matrix<bool>&, Matrix<float>&, int);

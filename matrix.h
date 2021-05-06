@@ -22,7 +22,7 @@ class Matrix {
 
 		Matrix(T *data, int numRows, int numCols): data(data), numRows(numRows), numCols(numCols), device(0) { };
 		Matrix(T *data, int numRows, int numCols, int device): data(data), numRows(numRows), numCols(numCols), device(device) { };
-		Matrix(int numRows, int numCols): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(0) { };
+		__host__ __device__ Matrix(int numRows, int numCols): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(0) { };
 		// Matrix(int numRows, int numCols, int device): data(new T[numRows*numCols]), numRows(numRows), numCols(numCols), device(device) { };
 		Matrix(vector<T> data, int numRows, int numCols): data(data.data()), numRows(numRows), numCols(numCols), device(0) { };
 
@@ -55,10 +55,18 @@ class Matrix {
 		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> Matrix<T>::matMulGPU(Matrix<T> &left, Matrix<G> &right);
 
 		template <typename G>
+		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulDiagGPU(Matrix<T> &left, Matrix<G> &diag);
+
+		template <typename G>
 		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulDiagSeq(Matrix<T> &left, Matrix<G> &diag);
+
+		static Matrix<T> matMulWalshHadamardGPU(Matrix<T> left);
 
 		static Matrix<T> matMulWalshHadamardSeq(Matrix<T> left);
 		
+		template <typename G>
+		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulWithOneHotGPU(Matrix<T> left, Matrix<G> oneHot);
+
 		template <typename G>
 		static Matrix<decltype(std::declval<T&>() * std::declval<G&>())> matMulWithOneHotSeq(Matrix<T> left, Matrix<G> oneHot);
 
@@ -66,7 +74,7 @@ class Matrix {
 
 		void print();
 
-		~Matrix() {
+		__host__ __device__ ~Matrix() {
 			// delete [] data;
 		}
 };
