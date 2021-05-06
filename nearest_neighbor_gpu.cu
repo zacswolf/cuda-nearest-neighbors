@@ -26,7 +26,6 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	int numDataPoints = trainData.numRows;
 	double closestDistance = std::numeric_limits<double>::max();
 
-	G *predictedLabels = new G(numPredictPoints);
 	G *d_predictedLabels;
 	cudaMalloc(&d_predictedLabels, numPredictPoints * sizeof(G));
 
@@ -37,6 +36,7 @@ G* gpuNormal(Matrix<T> &trainData, Matrix<G> &trainLabels, Matrix<T> &testData) 
 	gpuNormalKernel1D<<<blockSize, 512>>>(trainData, trainLabels, testData, closestDistance, d_predictedLabels, numDataPoints);
 	cudaDeviceSynchronize();
 
+	G *predictedLabels = (G *)malloc(numPredictPoints * sizeof(G));
 	cudaMemcpy(predictedLabels, d_predictedLabels, numPredictPoints * sizeof(G), cudaMemcpyDeviceToHost);
 
 	cudaFree(d_predictedLabels);
